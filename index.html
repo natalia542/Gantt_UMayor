@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Ruta de Producción · Hackea × U. Mayor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --azul:#0090F8; --azul-suave:#0090F81F; --azul-medio:#0090F855;
+  --tinta:#2A2A2A; --cuerpo:#404040; --fondo:#EBECF0; --superficie:#F3F3F3;
+  --blanco:#FFFFFF; --borde:#D8DBE2; --muted:#8A8F98;
+  --verde:#1F9D55; --ambar:#D98A00; --rojo:#C0392B;
+  --titulo:'Poppins',Arial,sans-serif; --texto:Arial,Helvetica,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--cuerpo);font-family:var(--texto);font-size:15px;line-height:1.5}
+h1,h2,h3,h4{font-family:var(--titulo);color:var(--tinta);margin:0}
+button{font-family:var(--texto);cursor:pointer}
+.oculto{display:none !important}
+
+/* ---------- cabecera ---------- */
+header{background:var(--blanco);border-bottom:1px solid var(--borde);position:relative;overflow:hidden}
+.marca{display:flex;align-items:center;gap:14px;padding:16px 20px;max-width:1400px;margin:0 auto;position:relative;z-index:2;flex-wrap:wrap}
+.logo{font-family:var(--titulo);font-weight:700;font-size:21px;letter-spacing:-.5px;color:#000}
+.logo span{color:var(--azul)}
+.divisor{width:2px;height:30px;background:var(--azul);border-radius:2px}
+.marca h1{font-size:17px;font-weight:600}
+.marca .sub{font-size:12px;color:var(--muted)}
+.deco{position:absolute;border-radius:50%;pointer-events:none}
+.d1{width:80px;height:80px;background:var(--azul);opacity:.10;top:-30px;right:60px}
+.d2{width:34px;height:34px;border:3px solid var(--azul);opacity:.35;top:26px;right:24px}
+.espaciador{flex:1}
+
+/* ---------- barra de vista ---------- */
+.barra{background:var(--blanco);border-bottom:1px solid var(--borde);padding:0 20px}
+.barra-in{max-width:1400px;margin:0 auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-bottom:2px}
+.tab{background:none;border:none;padding:12px 14px;font-size:14px;color:var(--cuerpo);border-bottom:3px solid transparent}
+.tab.on{color:var(--azul);border-bottom-color:var(--azul);font-weight:bold}
+.chip-vista{margin-left:auto;display:flex;gap:8px;align-items:center;padding:6px 0}
+.pill{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--borde);background:var(--superficie);color:var(--cuerpo)}
+.pill.equipo{background:var(--azul);color:#fff;border-color:var(--azul)}
+
+main{max-width:1400px;margin:0 auto;padding:18px 20px 60px}
+.card{background:var(--blanco);border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:14px}
+.card h2{font-size:16px;margin-bottom:4px}
+.card .desc{font-size:13px;color:var(--muted);margin-bottom:12px}
+
+.btn{background:var(--azul);color:#fff;border:none;border-radius:7px;padding:9px 15px;font-size:14px}
+.btn:hover{filter:brightness(1.07)}
+.btn.sec{background:var(--blanco);color:var(--tinta);border:1px solid var(--borde)}
+.btn.mini{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--borde);border-radius:7px;font-family:var(--texto);font-size:14px;background:var(--blanco);color:var(--cuerpo)}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+
+/* ---------- lista de asignaturas ---------- */
+.fila{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--borde);flex-wrap:wrap}
+.fila:last-child{border-bottom:none}
+.sem{width:11px;height:11px;border-radius:50%;flex:none}
+.sem.v{background:var(--verde)} .sem.a{background:var(--ambar)} .sem.r{background:var(--rojo)} .sem.g{background:var(--muted)}
+.fila .nom{font-weight:bold;color:var(--tinta);flex:1;min-width:200px}
+.fila .nom small{display:block;font-weight:normal;color:var(--muted);font-size:12px}
+.tag{font-size:10.5px;padding:3px 8px;border-radius:4px;background:var(--superficie);border:1px solid var(--borde);color:var(--cuerpo);white-space:nowrap}
+.tag.azul{background:var(--azul-suave);border-color:var(--azul-medio);color:#0069b5}
+.holg{font-size:12.5px;white-space:nowrap}
+.holg b{font-family:var(--titulo)}
+
+/* ---------- gantt ---------- */
+.scroll{overflow-x:auto;padding-bottom:8px}
+.tl{position:relative;min-width:100%}
+.eje{position:relative;height:46px;border-bottom:2px solid var(--tinta);margin-bottom:10px}
+.mes{position:absolute;top:0;font-size:11px;color:var(--tinta);font-weight:bold;border-left:2px solid var(--tinta);padding-left:5px;height:20px;text-transform:uppercase;letter-spacing:.5px}
+.dia{position:absolute;top:24px;height:22px;font-size:10px;color:var(--cuerpo);text-align:center;border-left:1px solid #E2E5EA;padding-top:3px}
+.dia.finde{color:#A7ACB4;background:#E9EBEF}
+.dia b{display:block;font-weight:normal;font-size:8.5px;color:var(--muted);text-transform:uppercase}
+.franja{position:absolute;top:0;bottom:0;background:#E9EBEF;z-index:0}
+.franja.feriado{background:#F6E3DF}
+.rowg{position:relative;height:38px;margin-bottom:2px;border-bottom:1px solid #F1F3F6}
+.rowg .etq{position:absolute;left:0;top:10px;font-size:13px;color:var(--tinta);z-index:4;white-space:nowrap;background:var(--blanco);padding-right:8px}
+.pista{position:relative;height:38px}
+.barra-plan{position:absolute;top:5px;height:15px;background:#7CC6FB;border:1.5px solid var(--azul);border-radius:3px;z-index:1}
+.barra-real{position:absolute;top:22px;height:12px;background:var(--azul);border-radius:3px;z-index:1}
+.barra-real.tarde{background:var(--rojo)}
+.barra-qa{background:#B4BAC3;border-color:#6E747D}
+.fechabarra{position:absolute;top:6px;font-size:10.5px;color:var(--cuerpo);white-space:nowrap;z-index:2}
+.hito-lbl{position:absolute;top:-2px;font-size:10px;color:var(--muted);white-space:nowrap}
+.linea{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--rojo);z-index:3}
+.linea.hoy{border-left:2px solid var(--azul)}
+.linea span{position:absolute;top:-46px;left:4px;font-size:10.5px;font-weight:bold;color:var(--rojo);background:var(--blanco);padding:1px 4px;white-space:nowrap;border-radius:3px}
+.linea.hoy span{color:var(--azul)}
+.leyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.leyenda i{display:inline-block;width:22px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle}
+
+/* ---------- tabla hitos ---------- */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:8px 6px;border-bottom:1px solid var(--borde);font-weight:normal}
+td{padding:9px 6px;border-bottom:1px solid #EDEFF3;vertical-align:middle}
+td.num{font-family:var(--titulo);font-size:13px}
+.desv{font-weight:bold}
+.desv.pos{color:var(--rojo)} .desv.neg{color:var(--verde)}
+
+/* ---------- modal ---------- */
+.velo{position:fixed;inset:0;background:#00000066;display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--blanco);border-radius:12px;padding:20px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:17px;margin-bottom:14px}
+.modal-pie{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.aviso{background:var(--azul-suave);border-left:3px solid var(--azul);padding:10px 12px;font-size:13px;border-radius:0 6px 6px 0;margin-bottom:12px}
+.aviso.alerta{background:#C0392B14;border-left-color:var(--rojo)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--tinta);color:#fff;padding:11px 18px;border-radius:8px;font-size:14px;z-index:80;max-width:90vw}
+.vacio{text-align:center;padding:36px 12px;color:var(--muted);font-size:14px}
+footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
+@media(max-width:640px){ .marca h1{font-size:15px} main{padding:14px 12px 50px} }
+@media print{ .barra,.btn,header .deco,footer{display:none} body{background:#fff} .card{break-inside:avoid} }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="deco d1"></div><div class="deco d2"></div>
+  <div class="marca">
+    <div class="logo">HACK<span>EA</span></div>
+    <div class="divisor"></div>
+    <div>
+      <h1>Ruta de Producción · Universidad Mayor</h1>
+      <div class="sub">Ciclo 2 · Seguimiento de planificación y avance real</div>
+    </div>
+  </div>
+</header>
+
+<div class="barra">
+  <div class="barra-in">
+    <button class="tab on" data-t="asig" onclick="irA('asig')">Asignaturas</button>
+    <button class="tab" data-t="det" onclick="irA('det')">Detalle</button>
+    <button class="tab" data-t="cons" onclick="irA('cons')">Consolidado</button>
+    <button class="tab" data-t="alertas" onclick="irA('alertas')">Alertas <span id="contAlertas"></span></button>
+    <button class="tab" data-t="cfg" onclick="irA('cfg')">Cómo se calcula</button>
+    <div class="chip-vista">
+      <span class="pill" id="pillActualizado">Cargando…</span>
+      <button class="btn mini sec" onclick="recargar()">Actualizar</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <section id="v-asig">
+    <div class="card">
+      <h2>Estado de las asignaturas</h2>
+      <div class="desc">La fecha de envío de los recursos al docente determina toda la carta. La holgura es lo que queda entre el término del montaje y el envío a QA.</div>
+      <div class="grid g3" style="margin-bottom:14px">
+        <div><label>Programa</label>
+          <select id="fPrograma" onchange="pintarLista()">
+            <option value="">Todos</option><option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
+          </select></div>
+        <div><label>Estado</label>
+          <select id="fEstado" onchange="pintarLista()">
+            <option value="">Todos</option><option value="r">Sin holgura</option>
+            <option value="a">Al límite</option><option value="v">Con holgura</option>
+            <option value="g">Sin fecha de envío</option>
+          </select></div>
+      </div>
+      <div id="lista"></div>
+    </div>
+  </section>
+
+  <section id="v-det" class="oculto">
+    <div class="card">
+      <label>Asignatura</label>
+      <select id="selAsig" onchange="pintarDetalle()"></select>
+    </div>
+    <div id="detalle"></div>
+  </section>
+
+  <section id="v-cons" class="oculto">
+    <div class="card">
+      <h2>Todas las asignaturas en el tiempo</h2>
+      <div class="desc">Cada barra muestra el tramo de trabajo de Hackea, la ventana de QA y el tramo final antes del inicio de clases.</div>
+      <div class="scroll" id="consolidado"></div>
+      <div class="leyenda">
+        <span><i style="background:#7CC6FB;border:1px solid var(--azul)"></i>Trabajo Hackea + docente</span>
+        <span><i style="background:#B4BAC3"></i>QA Educación Virtual</span>
+        <span><i style="background:#EDEFF3;border:1px solid var(--borde)"></i>Ajustes y revisión final</span>
+        <span><i style="background:var(--rojo);width:3px"></i>Inicio de clases</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Carga por semana</h2>
+      <div class="desc">Cantidad de asignaturas con trabajo de Hackea activo cada semana. Los picos son los topes que hay que anticipar.</div>
+      <div class="scroll" id="carga"></div>
+    </div>
+  </section>
+
+  <section id="v-alertas" class="oculto">
+    <div class="card">
+      <h2>Alertas de planificación</h2>
+      <div class="desc">Lo que necesita una decisión.</div>
+      <div id="alertasPlan"></div>
+    </div>
+    <div class="card">
+      <h2>Etapas vencidas sin registrar</h2>
+      <div class="desc">Su fecha planificada de término ya pasó y nadie anotó la fecha real en la planilla.</div>
+      <div id="alertasVencidas"></div>
+    </div>
+    <div class="card">
+      <h2>Problemas de lectura de la planilla</h2>
+      <div class="desc">Filas que la herramienta no pudo interpretar. Mientras estén acá, esa información no se está mostrando.</div>
+      <div id="alertasDatos"></div>
+    </div>
+  </section>
+
+  <section id="v-cfg" class="oculto">
+    <div class="card">
+      <h2>Cómo se calculan las fechas</h2>
+      <div class="desc">Cuenta regresiva desde el inicio de clases, que no se mueve nunca.</div>
+      <table>
+        <tr><td><b>Inicio de clases − 5 días hábiles</b></td><td>Fecha máxima del 100% / entrega al profesor</td></tr>
+        <tr><td><b>− 5 días hábiles</b></td><td>Retroalimentación de QA</td></tr>
+        <tr><td><b>− 10 días hábiles</b></td><td>Envío a QA de Educación Virtual</td></tr>
+        <tr><td colspan="2" style="color:var(--muted);font-size:12.5px">Hacia adelante, la carta arranca el día en que Hackea envía los recursos al docente: revisión del docente 5 días hábiles, reunión 3, montaje 2.</td></tr>
+        <tr><td colspan="2" style="background:var(--azul-suave);font-size:13px"><b>El inicio de clases no se mueve.</b> Cuando algo no cabe, se comprimen los procesos previos. La semana del docente, la ventana de QA y la revisión final no son comprimibles.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Plazos por defecto</h2>
+      <div class="desc">Se usan cuando hay tiempo. Si no alcanza, la herramienta los recorta sola en el orden de la última columna.</div>
+      <table>
+        <tr><th>Etapa</th><th>Con holgura</th><th>Mínimo</th><th>Orden de recorte</th></tr>
+        <tr><td>Envío de recursos al docente</td><td>2 días</td><td>1 día</td><td>2°</td></tr>
+        <tr><td>Revisión del docente</td><td>5 días hábiles</td><td>5</td><td>no se recorta</td></tr>
+        <tr><td>Reunión con el docente</td><td>3 días</td><td>3</td><td>no se recorta</td></tr>
+        <tr><td>Montaje en Blackboard</td><td>2 días</td><td>2</td><td>no se recorta</td></tr>
+        <tr><td>QA Educación Virtual</td><td>10 días hábiles</td><td>10</td><td>no se recorta</td></tr>
+        <tr><td>Ajustes post-QA</td><td>5 días hábiles</td><td>2</td><td>1°</td></tr>
+        <tr><td>Revisión en plataforma</td><td>5 días hábiles</td><td>5</td><td>no se recorta</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>De dónde salen los datos</h2>
+      <div id="estadoFuente"></div>
+    </div>
+  </section>
+</main>
+
+<footer>Hackea · info@hackea.pro</footer>
+<div id="toast" class="oculto"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   FUENTE DE DATOS
+   Pegar el ID de la planilla de Google Sheets. Se saca de la URL:
+   docs.google.com/spreadsheets/d/ESTO_DE_ACA/edit
+   La planilla debe estar compartida como "cualquier persona con
+   el enlace puede ver". Mientras esté vacío, la app funciona en
+   modo demostración con los datos de ejemplo.
+   ═══════════════════════════════════════════════════════════ */
+const SHEET_ID = "1wCyXkHwmwo6lhuBgGE1YXCCWqrnjJDyUu6e1RZni1UY";
+
+const HAY_SHEET = SHEET_ID.length > 0;
+const URL_SHEET = SHEET_ID ? "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/edit" : "";
+const LS_CACHE = "hackea_ruta_cache";
+
+let estado = { asignaturas: [], problemas: [], leidoEn: null };
+let vistaActual = "asig";
+let feriados = [];
+
+const FERIADOS_DEFECTO = [
+  "2026-08-15","2026-09-18","2026-09-19","2026-10-12","2026-10-31","2026-11-01",
+  "2026-12-08","2026-12-25","2027-01-01","2027-04-02","2027-04-03","2027-05-01",
+  "2027-05-21","2027-06-21","2027-06-28"
+];
+
+const ELASTICO = {
+  1: {deseado:2, minimo:1, nota:"Envío al docente"},
+  2: {deseado:5, minimo:5, nota:"Revisión del docente"},
+  3: {deseado:3, minimo:3, nota:"Reunión con el docente"},
+  5: {deseado:2, minimo:2, nota:"Montaje en Blackboard"},
+  7: {deseado:5, minimo:2, nota:"Ajustes post-QA"}
+};
+const COMPRIMIR = [7, 1];
+
+const HITOS_BASE = [
+  {orden:1, nombre:"Envío de recursos al docente",        responsable:"Hackea",           duracion_dias:2, activo:true,  anclado:false},
+  {orden:2, nombre:"Revisión de recursos por el docente", responsable:"Docente",          duracion_dias:5, activo:true,  anclado:false},
+  {orden:3, nombre:"Reunión de revisión de recursos",     responsable:"Hackea + Docente", duracion_dias:3, activo:true,  anclado:false},
+  {orden:4, nombre:"Ajustes tras la reunión",             responsable:"Hackea",           duracion_dias:2, activo:false, anclado:false},
+  {orden:5, nombre:"Montaje en Blackboard",               responsable:"Hackea",           duracion_dias:2, activo:true,  anclado:false},
+  {orden:6, nombre:"QA Educación Virtual",                responsable:"Educación Virtual",duracion_dias:10,activo:true,  anclado:true},
+  {orden:7, nombre:"Ajustes post-QA",                     responsable:"Hackea",           duracion_dias:5, activo:true,  anclado:true},
+  {orden:8, nombre:"Revisión en plataforma por el docente",responsable:"Docente",         duracion_dias:5, activo:true,  anclado:true}
+];
+
+/* ═══════════ UTILIDADES DE FECHA ═══════════ */
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function aFecha(s){ if(!s) return null; const p=String(s).slice(0,10).split("-"); return new Date(+p[0],+p[1]-1,+p[2]); }
+function aTexto(d){ if(!d) return ""; const m=String(d.getMonth()+1).padStart(2,"0"), dd=String(d.getDate()).padStart(2,"0"); return d.getFullYear()+"-"+m+"-"+dd; }
+function bonita(d){ if(!d) return "—"; return d.getDate()+" "+MESES[d.getMonth()]+" "+String(d.getFullYear()).slice(2); }
+function masDias(d,n){ const r=new Date(d.getTime()); r.setDate(r.getDate()+n); return r; }
+function diffDias(a,b){ return Math.round((b - a)/86400000); }
+function hoy(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+
+function enBloqueo(d, bloqueos){
+  for(const b of (bloqueos||[])){
+    const x=aFecha(b.desde), y=aFecha(b.hasta);
+    if(x && y && d>=x && d<=y) return true;
+  }
+  return false;
+}
+// Un día sirve para trabajar según el modo de calendario de la asignatura
+function diaValido(d, asig, hito){
+  if(asig.modo_calendario === "corridos") return !(hito && hito.responsable.includes("Docente") && enBloqueo(d, asig.bloqueos));
+  const dow = d.getDay();
+  if(dow === 0 || dow === 6) return false;
+  if(feriados.includes(aTexto(d))) return false;
+  if(hito && hito.responsable.includes("Docente") && enBloqueo(d, asig.bloqueos)) return false;
+  return true;
+}
+function proximoValido(d, asig, hito){ let x=new Date(d.getTime()); let g=0; while(!diaValido(x,asig,hito) && g<400){ x=masDias(x,1); g++; } return x; }
+function previoValido(d, asig, hito){ let x=new Date(d.getTime()); let g=0; while(!diaValido(x,asig,hito) && g<400){ x=masDias(x,-1); g++; } return x; }
+// Retrocede n días de trabajo desde una fecha de término y devuelve la de inicio
+function retroceder(fin, n, asig, hito){
+  let x = previoValido(fin, asig, hito), quedan = n - 1, g = 0;
+  while(quedan > 0 && g < 900){ x = previoValido(masDias(x,-1), asig, hito); quedan--; g++; }
+  return x;
+}
+// Avanza n días de trabajo (el primero cuenta)
+function avanzar(inicio, n, asig, hito){
+  let x = proximoValido(inicio, asig, hito), quedan = n - 1, g = 0;
+  while(quedan > 0 && g < 900){ x = proximoValido(masDias(x,1), asig, hito); quedan--; g++; }
+  return x;
+}
+
+/* La ventana de QA se mide en días hábiles de lunes a viernes, que es como
+   está comprometida con Educación Virtual, e independiente del calendario
+   que use cada asignatura. */
+function esHabilSimple(d){ const w = d.getDay(); return w !== 0 && w !== 6; }
+function retrocederHabil(fin, n){
+  let x = new Date(fin.getTime()), contados = 0, g = 0;
+  while(!esHabilSimple(x)) x = masDias(x,-1);
+  contados = 1;
+  while(contados < n && g < 600){ x = masDias(x,-1); if(esHabilSimple(x)) contados++; g++; }
+  return x;
+}
+// Días hábiles de revisión: no cuenta el día del envío, sí el de la respuesta
+function habilesEntre(desde, hasta){
+  if(!desde || !hasta) return null;
+  let x = masDias(desde,1), n = 0, g = 0;
+  while(x <= hasta && g < 600){ if(esHabilSimple(x)) n++; x = masDias(x,1); g++; }
+  return n;
+}
+function feriadosEn(desde, hasta){
+  if(!desde || !hasta) return [];
+  return feriados.filter(f => { const d = aFecha(f); return d > desde && d <= hasta && esHabilSimple(d); });
+}
+
+/* ═══════════ MOTOR DE PLANIFICACIÓN ═══════════ */
+/* Plan fijado: la asignatura ya tiene fechas acordadas (la carta Gantt
+   entregada). La herramienta las respeta tal cual y solo verifica que
+   sigan siendo coherentes con el inicio de clases y con lo comprometido. */
+function planFijado(asig, inicioClases){
+  const hitos = (asig.hitos || []).slice().sort((a,b) => a.orden - b.orden);
+  hitos.forEach(h => {
+    h._ini = aFecha(h.fecha_plan_inicio);
+    h._fin = aFecha(h.fecha_plan_fin) || h._ini;
+    if(!h._ini) h.activo = false;
+  });
+  const vivos = hitos.filter(h => h.activo && h._ini);
+  const qa = hitos.find(h => h.orden === 6);
+  const h7 = hitos.find(h => h.orden === 7);
+  const envioQA = qa && qa._ini ? qa._ini : null;
+  const retroQA = qa && qa._fin ? qa._fin : null;
+  const fecha100 = h7 && h7._fin ? h7._fin : retroQA;
+
+  const cabeza = vivos.filter(h => h.orden <= 5);
+  const partida = cabeza.length ? cabeza[0]._ini : (vivos[0] ? vivos[0]._ini : inicioClases);
+  const finCabeza = cabeza.length ? cabeza[cabeza.length-1]._fin : partida;
+  const finProceso = vivos.reduce((m,h) => h._fin > m ? h._fin : m, vivos[0] ? vivos[0]._fin : inicioClases);
+
+  const colchon = diffDias(finProceso, inicioClases);
+  const holgura = envioQA ? diffDias(finCabeza, envioQA) : 0;
+  const diasQAplan = habilesEntre(envioQA, retroQA);
+  const feriadosQA = feriadosEn(envioQA, retroQA);
+
+  let semaforo = "v";
+  if(colchon < 7) semaforo = "r"; else if(colchon <= 9) semaforo = "a";
+
+  return { inicioClases, fecha100, retroQA, envioQA, hitos, holgura, semaforo,
+           partida, finCabeza, finProceso, ultimoTren: partida, propuesta:false,
+           manual:true, colchon, diasQAplan, feriadosQA };
+}
+
+
+function planificar(asig){
+  const inicioClases = aFecha(asig.fecha_inicio_clases);
+  if(asig.plan_manual) return planFijado(asig, inicioClases);
+  if(asig.elastico === false) return armarPlan(asig, inicioClases, null);
+
+  // Se intenta el plan holgado y se va comprimiendo solo lo necesario
+  let recortes = [];
+  for(let paso = 0; paso <= COMPRIMIR.length; paso++){
+    const r = armarPlan(asig, inicioClases, recortes);
+    if(r.holgura >= 0 || paso === COMPRIMIR.length) return r;
+    recortes = COMPRIMIR.slice(0, paso + 1);
+  }
+}
+
+/* Arma el plan con las duraciones que correspondan. `recortes` es la lista
+   de hitos que ya se llevaron a su mínimo. */
+function armarPlan(asig, inicioClases, recortes){
+  const dur = h => {
+    const e = ELASTICO[h.orden];
+    if(!e || !recortes) return Math.max(1, h.duracion_dias);
+    return recortes.indexOf(h.orden) >= 0 ? e.minimo : e.deseado;
+  };
+
+  // Toda la cola se cuenta en días hábiles
+  const plataforma = asig.dias_revision_plataforma ?? 5;
+  const ajustes = (recortes && ELASTICO[7])
+      ? (recortes.indexOf(7) >= 0 ? ELASTICO[7].minimo : ELASTICO[7].deseado)
+      : (asig.dias_ajustes_qa ?? 5);
+  const qa = asig.dias_qa ?? 10;
+
+  const fecha100 = retrocederHabil(inicioClases, plataforma + 1);
+  const retroQA  = retrocederHabil(fecha100, ajustes + 1);
+  const envioQA  = retrocederHabil(retroQA, qa + 1);
+  const colchon  = diffDias(fecha100, inicioClases);
+
+  const hitos = (asig.hitos || []).slice().sort((a,b) => a.orden - b.orden);
+  const set = (o, i, f) => { const h = hitos.find(x => x.orden === o); if(h){ h._ini = i; h._fin = f; } };
+  set(6, envioQA, retroQA);
+  set(7, retroQA, fecha100);
+  set(8, fecha100, inicioClases);
+
+  const cabeza = hitos.filter(h => h.orden <= 5 && h.activo);
+
+  // Última fecha posible de envío al docente
+  let atras = envioQA, ultimoTren = envioQA;
+  for(let i = cabeza.length - 1; i >= 0; i--){
+    const h = cabeza[i];
+    if(h.orden === 1) continue;
+    ultimoTren = retroceder(atras, dur(h), asig, h);
+    atras = previoValido(masDias(ultimoTren, -1), asig, h);
+  }
+
+  const propuesta = !asig.fecha_envio_docente;
+  const partida = propuesta ? ultimoTren : aFecha(asig.fecha_envio_docente);
+  let cursor = partida;
+  for(const h of cabeza){
+    h._ini = proximoValido(cursor, asig, h);
+    h._fin = avanzar(h._ini, dur(h), asig, h);
+    h._dur = dur(h);
+    cursor = (h.orden === 1) ? h._ini : masDias(h._fin, 1);
+  }
+  hitos.filter(h => h.orden <= 5 && !h.activo).forEach(h => { h._ini = null; h._fin = null; });
+
+  const finCabeza = cabeza.length ? cabeza[cabeza.length-1]._fin : partida;
+  const holgura = diffDias(finCabeza, envioQA);
+
+  let semaforo = "v";
+  if(holgura < 0) semaforo = "r"; else if(holgura <= 4) semaforo = "a";
+  if(propuesta && holgura >= 0) semaforo = "g";
+
+  return { inicioClases, fecha100, retroQA, envioQA, hitos, holgura, semaforo, partida,
+           finCabeza, finProceso: inicioClases, ultimoTren, propuesta, manual:false,
+           colchon, diasQAplan: qa, ajustes,
+           recortes: (recortes || []).slice() };
+}
+
+function desviacion(h){
+  if(!h.fecha_real_fin || !h._fin) return null;
+  return diffDias(h._fin, aFecha(h.fecha_real_fin));
+}
+
+
+
+/* ═══════════ LECTURA DE LA PLANILLA ═══════════ */
+function urlPestana(nombre){
+  return "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
+         "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(nombre);
+}
+
+// Divide una línea CSV respetando comillas y comas dentro de un campo
+function partirCSV(texto){
+  const filas = []; let campo = "", fila = [], comillas = false;
+  for(let i = 0; i < texto.length; i++){
+    const c = texto[i];
+    if(comillas){
+      if(c === '"' && texto[i+1] === '"'){ campo += '"'; i++; }
+      else if(c === '"'){ comillas = false; }
+      else campo += c;
+    }else{
+      if(c === '"') comillas = true;
+      else if(c === ','){ fila.push(campo); campo = ""; }
+      else if(c === '\n'){ fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+      else if(c !== '\r') campo += c;
+    }
+  }
+  if(campo.length || fila.length){ fila.push(campo); filas.push(fila); }
+  return filas;
+}
+
+function aObjetos(filas){
+  if(!filas.length) return [];
+  const cab = filas[0].map(x => x.trim().toLowerCase());
+  return filas.slice(1).filter(f => f.some(v => String(v).trim() !== "")).map((f, i) => {
+    const o = {_fila: i + 2};
+    cab.forEach((c, j) => { o[c] = (f[j] === undefined ? "" : String(f[j]).trim()); });
+    return o;
+  });
+}
+
+// Acepta 2026-08-20, 20-08-2026, 20/08/2026 y el Date(a,m,d) que a veces entrega Google
+function leerFecha(v){
+  if(!v) return null;
+  v = String(v).trim();
+  if(!v) return null;
+  let m = v.match(/^Date\((\d+),(\d+),(\d+)\)$/);
+  if(m) return aTexto(new Date(+m[1], +m[2], +m[3]));
+  m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return m[1] + "-" + String(m[2]).padStart(2,"0") + "-" + String(m[3]).padStart(2,"0");
+  m = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(m) return m[3] + "-" + String(m[2]).padStart(2,"0") + "-" + String(m[1]).padStart(2,"0");
+  return "__ERROR__";
+}
+
+function leerBloqueos(v){
+  if(!v) return [];
+  return String(v).split(";").map(t => {
+    const p = t.split(/\s+a\s+/i);
+    if(p.length !== 2) return null;
+    const d = leerFecha(p[0]), h = leerFecha(p[1]);
+    if(!d || !h || d === "__ERROR__" || h === "__ERROR__") return null;
+    return {desde:d, hasta:h};
+  }).filter(Boolean);
+}
+
+async function traer(pestana){
+  const r = await fetch(urlPestana(pestana));
+  if(!r.ok) throw new Error("La pestaña " + pestana + " no respondió (" + r.status + "). Revisa que la planilla esté compartida con enlace de lectura.");
+  return aObjetos(partirCSV(await r.text()));
+}
+
+async function cargarDatos(){
+  feriados = FERIADOS_DEFECTO.slice();
+  if(!HAY_SHEET){ modoDemostracion(); return; }
+
+  const problemas = [];
+  const anota = (donde, fila, msg) => problemas.push({donde, fila, msg});
+
+  let ruta, hitos, fer;
+  try{
+    ruta  = await traer("RUTA");
+    hitos = await traer("HITOS");
+    try{ fer = await traer("FERIADOS"); }catch(e){ fer = []; }
+  }catch(e){
+    const cache = JSON.parse(localStorage.getItem(LS_CACHE) || "null");
+    if(cache){
+      estado = cache;
+      estado.problemas = [{donde:"Conexión", fila:"", msg: e.message + " Se está mostrando la última lectura guardada, del " + cache.leidoEn + "."}];
+      return;
+    }
+    estado.problemas = [{donde:"Conexión", fila:"", msg:e.message}];
+    estado.asignaturas = [];
+    return;
+  }
+
+  const feriadosSheet = fer.map(f => leerFecha(f.fecha)).filter(f => f && f !== "__ERROR__");
+  if(feriadosSheet.length) feriados = feriadosSheet;
+
+  const porId = {};
+  const asignaturas = [];
+  ruta.forEach(f => {
+    const id = f.id;
+    if(!id){ anota("RUTA", f._fila, "Fila sin id. No se puede enlazar con sus hitos."); return; }
+    if(porId[id]){ anota("RUTA", f._fila, "El id " + id + " está repetido."); return; }
+    const inicio = leerFecha(f.inicio_clases);
+    if(!inicio || inicio === "__ERROR__"){
+      anota("RUTA", f._fila, "«" + (f.asignatura || id) + "» no tiene una fecha de inicio de clases válida. Sin ese dato no se puede planificar.");
+      return;
+    }
+    const envio = leerFecha(f.envio_al_docente);
+    if(envio === "__ERROR__") anota("RUTA", f._fila, "La fecha de envío al docente de «" + (f.asignatura || id) + "» no se entiende. Formato esperado: 2026-08-20.");
+    const modo = (f.modo_plan || "calculado").toLowerCase();
+    if(modo !== "calculado" && modo !== "acordado")
+      anota("RUTA", f._fila, "modo_plan dice «" + f.modo_plan + "». Tiene que ser calculado o acordado. Se asumió calculado.");
+
+    const a = {
+      id: id, programa: f.programa || "", ciclo: f.ciclo || "", nombre: f.asignatura || id,
+      docente: f.docente || "", unidades: f.unidades || "", horas_asincronas: f.horas_asincronas || "",
+      fecha_inicio_clases: inicio,
+      fecha_envio_docente: (envio && envio !== "__ERROR__") ? envio : null,
+      plan_manual: modo === "acordado", etapa: f.etapa || "", comentario: f.comentario || "",
+      bloqueos: leerBloqueos(f.bloqueos_docente),
+      modo_calendario: "habiles", dias_revision_plataforma: 5, dias_ajustes_qa: 5, dias_qa: 10,
+      dias_colchon: 8, elastico: true, fecha_qa_comprometida: null,
+      fases: {}, hitos: []
+    };
+    porId[id] = a; asignaturas.push(a);
+  });
+
+  hitos.forEach(h => {
+    const a = porId[h.id_asignatura];
+    if(!a){
+      anota("HITOS", h._fila, "El id «" + h.id_asignatura + "» no existe en la pestaña RUTA.");
+      return;
+    }
+    const n = parseInt(h.n, 10);
+    if(!n){ anota("HITOS", h._fila, "Falta el número de hito."); return; }
+    const base = HITOS_BASE.find(x => x.orden === n) || {};
+    const pi = leerFecha(h.plan_inicio), pf = leerFecha(h.plan_fin);
+    const ri = leerFecha(h.real_inicio), rf = leerFecha(h.real_fin);
+    [["plan_inicio",pi],["plan_fin",pf],["real_inicio",ri],["real_fin",rf]].forEach(([col,val]) => {
+      if(val === "__ERROR__") anota("HITOS", h._fila, "La columna " + col + " no tiene una fecha válida.");
+    });
+    if(ri && rf && ri !== "__ERROR__" && rf !== "__ERROR__" && rf < ri)
+      anota("HITOS", h._fila, "La fecha real de término es anterior a la de inicio.");
+
+    const fase = (h.fase || "3").trim();
+    const hito = {
+      id: a.id + "-" + fase + "-" + n, asignatura_id: a.id, fase: fase, orden: n,
+      nombre: h.hito || base.nombre || ("Etapa " + n),
+      responsable: h.responsable || base.responsable || "Hackea",
+      duracion_dias: base.duracion_dias || 1, activo: true, anclado: base.anclado || false,
+      fecha_plan_inicio: (pi && pi !== "__ERROR__") ? pi : null,
+      fecha_plan_fin: (pf && pf !== "__ERROR__") ? pf : null,
+      fecha_real_inicio: (ri && ri !== "__ERROR__") ? ri : null,
+      fecha_real_fin: (rf && rf !== "__ERROR__") ? rf : null,
+      atribuido_a: h.atribuido_a || "", nota: h.nota || ""
+    };
+    (a.fases[fase] = a.fases[fase] || []).push(hito);
+  });
+
+  // Cada asignatura queda con una lista de hitos por fase
+  asignaturas.forEach(a => {
+    const claves = Object.keys(a.fases).sort();
+    a.listaFases = claves;
+    const principal = claves.filter(k => k.indexOf("3") === 0)[0] || claves[claves.length-1];
+    a.faseProduccion = principal;
+    a.hitos = a.fases[principal] || [];
+    if(!a.hitos.length){
+      anota("HITOS", "—", "«" + a.nombre + "» no tiene ninguna etapa cargada.");
+      a.hitos = HITOS_BASE.filter(h => h.activo).map(h => Object.assign({
+        id: a.id + "-3-" + h.orden, asignatura_id: a.id, fase: "3",
+        fecha_plan_inicio:null, fecha_plan_fin:null, fecha_real_inicio:null, fecha_real_fin:null,
+        atribuido_a:"", nota:""
+      }, h));
+      a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3";
+    }
+    if(a.plan_manual){
+      const faltan = a.hitos.filter(h => !h.fecha_plan_inicio);
+      if(faltan.length) anota("HITOS", "—", "«" + a.nombre + "» está en modo acordado pero le faltan fechas planificadas en " + faltan.length + " etapa(s). Esas etapas no se dibujan.");
+    }
+  });
+
+  // Un mismo error repetido en muchas filas se muestra una sola vez
+  const vistos = {};
+  const agrupados = [];
+  problemas.forEach(x => {
+    const k = x.donde + "|" + x.msg;
+    if(vistos[k]){ vistos[k].veces++; return; }
+    vistos[k] = {veces:1, ref:x}; agrupados.push(x);
+  });
+  agrupados.forEach(x => {
+    const v = vistos[x.donde + "|" + x.msg].veces;
+    if(v > 1){ x.fila = x.fila + " y " + (v-1) + " fila(s) más"; }
+  });
+
+  estado.asignaturas = asignaturas;
+  estado.problemas = agrupados;
+  estado.leidoEn = new Date().toLocaleString("es-CL", {dateStyle:"short", timeStyle:"short"});
+  try{ localStorage.setItem(LS_CACHE, JSON.stringify(estado)); }catch(e){}
+}
+
+function modoDemostracion(){
+  estado.asignaturas = [];
+  estado.problemas = [{donde:"Configuración", fila:"",
+    msg:"Todavía no está conectada la planilla. Hay que pegar el ID de Google Sheets al inicio del archivo index.html."}];
+  estado.leidoEn = null;
+}
+
+/* ═══════════ ALERTAS ═══════════ */
+function calcularAlertas(){
+  const plan = [], vencidas = [];
+  const h = hoy();
+  estado.asignaturas.forEach(a => {
+    const p = planificar(a);
+    if(p.manual){
+      if(p.colchon < 7) plan.push({a, nivel:"r", msg:"El plan acordado cierra el " + bonita(p.finProceso) + ", a " + p.colchon + " días del inicio de clases. El mínimo es una semana."});
+      if(p.diasQAplan !== null && p.diasQAplan < 10) plan.push({a, nivel:"r", msg:"La ventana de QA de este plan es de " + p.diasQAplan + " días hábiles sobre los 10 comprometidos con Educación Virtual."});
+    }else{
+      if(p.holgura < 0) plan.push({a, nivel:"r", msg:"No alcanza: enviando el " + bonita(p.partida) + " el montaje termina " + Math.abs(p.holgura) + " días después del envío a QA. La fecha tope de envío era el " + bonita(p.ultimoTren) + "."});
+      else if(p.propuesta) plan.push({a, nivel:"g", msg:"Sin fecha de envío al docente. Tope: " + bonita(p.ultimoTren) + "."});
+      else if(p.recortes && p.recortes.length) plan.push({a, nivel:"a", msg:"Plan comprimido: " + p.recortes.map(o => ELASTICO[o].nota.toLowerCase()).join(" y ") + " al mínimo."});
+      else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de holgura antes del envío a QA."});
+    }
+    p.hitos.filter(x => x.activo && x._fin && x._fin < h && !x.fecha_real_fin).forEach(x => {
+      vencidas.push({a, hito:x, dias: diffDias(x._fin, h)});
+    });
+  });
+  vencidas.sort((x,y) => y.dias - x.dias);
+  return {plan, vencidas};
+}
+
+/* ═══════════ NAVEGACIÓN Y PINTADO ═══════════ */
+function irA(t){
+  vistaActual = t;
+  document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  ["asig","det","cons","alertas","cfg"].forEach(x => document.getElementById("v-"+x).classList.toggle("oculto", x !== t));
+  pintarTodo();
+}
+
+function pintarTodo(){
+  const al = calcularAlertas();
+  const total = al.plan.filter(x => x.nivel === "r").length + al.vencidas.length + estado.problemas.length;
+  document.getElementById("contAlertas").textContent = total ? "(" + total + ")" : "";
+  document.getElementById("pillActualizado").textContent = estado.leidoEn ? "Datos del " + estado.leidoEn : "Sin conectar";
+  if(vistaActual === "asig") pintarLista();
+  if(vistaActual === "det"){ llenarSelector(); pintarDetalle(); }
+  if(vistaActual === "cons"){ pintarConsolidado(); pintarCarga(); }
+  if(vistaActual === "alertas") pintarAlertas(al);
+  if(vistaActual === "cfg") pintarFuente();
+}
+
+function pintarLista(){
+  const fp = document.getElementById("fPrograma").value;
+  const fe = document.getElementById("fEstado").value;
+  const cont = document.getElementById("lista");
+  if(!estado.asignaturas.length){
+    cont.innerHTML = '<div class="vacio">No hay asignaturas cargadas. Revisa la pestaña de alertas.</div>';
+    return;
+  }
+  const filas = estado.asignaturas.slice()
+    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .map(a => ({a, p: planificar(a)}))
+    .filter(x => (!fp || x.a.programa === fp) && (!fe || x.p.semaforo === fe));
+  if(!filas.length){ cont.innerHTML = '<div class="vacio">No hay asignaturas que cumplan el filtro.</div>'; return; }
+
+  cont.innerHTML = filas.map(({a,p}) => {
+    let texto, color;
+    if(p.manual){
+      if(p.colchon < 7){ texto = "cierra a " + p.colchon + " días del inicio"; color = "var(--rojo)"; }
+      else { texto = p.colchon + " días antes de clases"; color = p.colchon <= 9 ? "var(--ambar)" : "var(--verde)"; }
+    }else if(p.holgura < 0){ texto = Math.abs(p.holgura) + " días de atraso sobre el envío a QA"; color = "var(--rojo)"; }
+    else if(p.propuesta){ texto = "enviar a más tardar el " + bonita(p.ultimoTren); color = "var(--muted)"; }
+    else { texto = p.holgura + " días de holgura"; color = p.holgura <= 4 ? "var(--ambar)" : "var(--verde)"; }
+    return `<div class="fila">
+      <span class="sem ${p.semaforo}"></span>
+      <div class="nom">${esc(a.nombre)}
+        <small>${esc(a.docente || "Sin docente asignado")}${a.etapa ? " · " + esc(a.etapa) : ""}</small></div>
+      <span class="tag azul">${esc(a.programa)}</span>
+      ${p.manual ? '<span class="tag">Plan acordado</span>' : ""}
+      ${(p.recortes && p.recortes.length) ? '<span class="tag" style="border-color:var(--rojo);color:var(--rojo)">Comprimido</span>' : ""}
+      <span class="tag">Al docente ${bonita(p.partida)}</span>
+      <span class="tag">Inicio ${bonita(p.inicioClases)}</span>
+      <span class="holg" style="color:${color}"><b>${texto}</b></span>
+      <button class="btn mini sec" onclick="verDetalle('${a.id}')">Ver</button>
+    </div>`;
+  }).join("");
+}
+
+function verDetalle(id){
+  irA("det");
+  document.getElementById("selAsig").value = id;
+  pintarDetalle();
+}
+
+function llenarSelector(){
+  const s = document.getElementById("selAsig");
+  const previo = s.value;
+  s.innerHTML = estado.asignaturas.slice()
+    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .map(a => `<option value="${a.id}">${esc(a.programa)} · ${esc(a.nombre)}</option>`).join("");
+  if(previo && estado.asignaturas.some(a => a.id === previo)) s.value = previo;
+}
+
+function nombreFase(clave){
+  if(clave.indexOf("1") === 0) return "Fase 1 · Desarrollo de contenido";
+  if(clave.indexOf("2") === 0) return "Fase 2 · Guionización";
+  if(clave.indexOf("3") === 0) return "Fase 3 · Producción de recursos";
+  return "Fase " + clave;
+}
+
+function pintarDetalle(){
+  const id = document.getElementById("selAsig").value;
+  const a = estado.asignaturas.find(x => x.id === id);
+  const cont = document.getElementById("detalle");
+  if(!a){ cont.innerHTML = '<div class="card"><div class="vacio">Selecciona una asignatura.</div></div>'; return; }
+  const p = planificar(a);
+
+  let alerta;
+  if(p.manual){
+    const partes = [];
+    if(p.colchon < 7) partes.push(`<div class="aviso alerta">El plan acordado cierra el ${bonita(p.finProceso)}, a solo ${p.colchon} días del inicio de clases. La regla son 7 como mínimo.</div>`);
+    else partes.push(`<div class="aviso">Plan acordado con la universidad. Cierra el ${bonita(p.finProceso)} y deja ${p.colchon} días antes del inicio de clases.</div>`);
+    if(p.diasQAplan !== null && p.diasQAplan < 10)
+      partes.push(`<div class="aviso alerta">La ventana de QA de este plan es de <b>${p.diasQAplan} días hábiles</b> sobre los 10 comprometidos. Si Educación Virtual usa su plazo completo, el cierre se corre ${10 - p.diasQAplan} días hábiles.</div>`);
+    if(p.feriadosQA && p.feriadosQA.length)
+      partes.push(`<div class="aviso">Dentro de la ventana de QA caen ${p.feriadosQA.length} feriado(s): ${p.feriadosQA.map(f => bonita(aFecha(f))).join(", ")}.</div>`);
+    alerta = partes.join("");
+  }else if(p.holgura < 0){
+    const faltan = Math.abs(p.holgura);
+    alerta = `<div class="aviso alerta"><b>No alcanza y el inicio de clases no se mueve.</b>
+      Enviando al docente el ${bonita(p.partida)}, el montaje termina ${faltan} días después del envío a QA del ${bonita(p.envioQA)}.
+      Había que enviar a más tardar el ${bonita(p.ultimoTren)}. La semana del docente, la ventana de QA y la revisión final no se recortan.</div>`;
+  }else if(p.propuesta){
+    alerta = `<div class="aviso">Todavía sin fecha de envío al docente en la planilla. Para llegar al envío a QA del ${bonita(p.envioQA)}, los recursos tienen que salir <b>a más tardar el ${bonita(p.ultimoTren)}</b>.</div>`;
+  }else{
+    alerta = `<div class="aviso">Recursos al docente el <b>${bonita(p.partida)}</b>. El tope era el ${bonita(p.ultimoTren)}, así que quedan ${p.holgura} días de holgura antes del envío a QA del ${bonita(p.envioQA)}.</div>`;
+    if(p.recortes && p.recortes.length)
+      alerta += `<div class="aviso alerta">No alcanzaba con los plazos holgados, así que se recortaron: <b>${p.recortes.map(o => ELASTICO[o].nota + " a " + ELASTICO[o].minimo + " día(s)").join(" · ")}</b>.</div>`;
+  }
+
+  const gantts = a.listaFases.map(clave => {
+    const sub = Object.assign({}, a, {hitos: a.fases[clave], plan_manual: (clave !== a.faseProduccion) ? true : a.plan_manual});
+    const pf = planificar(sub);
+    return `<div class="card">
+      <h2>${esc(nombreFase(clave))}</h2>
+      <div class="desc">La barra clara es lo planificado. La barra sólida abajo es lo que realmente ocurrió.</div>
+      <div class="scroll">${gantt(sub, pf)}</div>
+      <div class="leyenda">
+        <span><i style="background:#7CC6FB;border:1.5px solid var(--azul)"></i>Planificado</span>
+        <span><i style="background:var(--azul)"></i>Real</span>
+        <span><i style="background:var(--rojo)"></i>Real fuera de plazo</span>
+        <span><i style="background:#B4BAC3;border:1px solid #6E747D"></i>QA Educación Virtual</span>
+      </div>
+      ${tablaHitos(pf)}
+    </div>`;
+  }).join("");
+
+  cont.innerHTML = `
+  <div class="card">
+    <h2>${esc(a.nombre)}</h2>
+    <div class="desc">${esc(a.programa)} · ${esc(a.docente || "sin docente")} · ${a.unidades || "?"} unidades · ${a.horas_asincronas || "?"} horas asíncronas</div>
+    ${alerta}
+    <div class="grid g3">
+      ${tarjeta("Inicio de clases", bonita(p.inicioClases))}
+      ${tarjeta(p.manual ? "Cierre del proceso" : "Fecha máxima del 100%", bonita(p.manual ? p.finProceso : p.fecha100))}
+      ${tarjeta("Retroalimentación QA", bonita(p.retroQA))}
+      ${tarjeta("Envío a QA Ed. Virtual", bonita(p.envioQA))}
+    </div>
+    ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      ${URL_SHEET ? `<a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>` : ""}
+      <button class="btn sec" onclick="window.print()">Imprimir / PDF</button>
+    </div>
+  </div>
+  ${gantts}`;
+}
+
+function tablaHitos(p){
+  const h = hoy();
+  return `<div class="scroll" style="margin-top:16px">
+    <table>
+      <tr><th></th><th>Etapa</th><th>Responsable</th><th>Planificado</th><th>Ocurrió</th><th>Desvío</th><th>Atribuido a</th></tr>
+      ${p.hitos.filter(x => x.activo).map(x => {
+        const d = desviacion(x);
+        let cls = "", txt = "—";
+        if(d !== null){ txt = (d > 0 ? "+" : "") + d + " d"; cls = d > 0 ? "pos" : (d < 0 ? "neg" : ""); }
+        const vencido = x._fin && x._fin < h && !x.fecha_real_fin;
+        return `<tr>
+          <td class="num">${x.orden}</td>
+          <td>${esc(x.nombre)}${x.nota ? `<br><small style="color:var(--muted)">${esc(x.nota)}</small>` : ""}</td>
+          <td>${esc(x.responsable)}</td>
+          <td>${bonita(x._ini)} → ${bonita(x._fin)}</td>
+          <td>${(x.fecha_real_inicio || x.fecha_real_fin)
+                ? bonita(aFecha(x.fecha_real_inicio)) + " → " + bonita(aFecha(x.fecha_real_fin))
+                : (vencido ? '<span style="color:var(--rojo)">sin registrar</span>' : "—")}</td>
+          <td class="desv ${cls}">${txt}</td>
+          <td>${x.atribuido_a ? esc(x.atribuido_a) : "—"}</td>
+        </tr>`;
+      }).join("")}
+    </table></div>`;
+}
+
+function tarjeta(t, v){
+  return `<div style="background:var(--superficie);border:1px solid var(--borde);border-radius:8px;padding:10px 12px">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)">${t}</div>
+    <div style="font-family:var(--titulo);font-size:16px;color:var(--tinta);margin-top:2px">${v}</div></div>`;
+}
+
+function gantt(a, p){
+  const activos = p.hitos.filter(h => h.activo && h._ini);
+  if(!activos.length) return '<div class="vacio">Sin hitos planificados.</div>';
+  let min = activos.reduce((m,h) => h._ini < m ? h._ini : m, activos[0]._ini);
+  let max = p.inicioClases;
+  activos.forEach(h => {
+    if(h.fecha_real_inicio && aFecha(h.fecha_real_inicio) < min) min = aFecha(h.fecha_real_inicio);
+    if(h.fecha_real_fin && aFecha(h.fecha_real_fin) > max) max = aFecha(h.fecha_real_fin);
+    if(h._fin > max) max = h._fin;
+  });
+  min = masDias(min, -2); max = masDias(max, 2);
+  const total = Math.max(1, diffDias(min, max) + 1);
+  const px = total > 80 ? 15 : (total > 45 ? 18 : 24);   // ancho fijo por día, siempre legible
+  const ETQ = 250;
+  const DIAS_SEM = ["do","lu","ma","mi","ju","vi","sa"];
+  const x = d => ETQ + diffDias(min, d) * px;
+
+  // eje: meses arriba, todos los días abajo
+  let meses = "", dias = "", franjas = "";
+  let d = new Date(min.getTime());
+  while(d <= max){
+    if(d.getDate() === 1 || diffDias(min, d) === 0){
+      meses += `<div class="mes" style="left:${x(d)}px">${MESES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}</div>`;
+    }
+    const finde = (d.getDay() === 0 || d.getDay() === 6);
+    const fer = feriados.includes(aTexto(d));
+    dias += `<div class="dia${finde || fer ? " finde" : ""}" style="left:${x(d)}px;width:${px}px">
+               <b>${DIAS_SEM[d.getDay()]}</b>${d.getDate()}</div>`;
+    if(finde || fer) franjas += `<div class="franja${fer ? " feriado" : ""}" style="left:${x(d)}px;width:${px}px"></div>`;
+    d = masDias(d, 1);
+  }
+
+  const filas = activos.map(h => {
+    const izq = x(h._ini), an = Math.max(px, (diffDias(h._ini, h._fin) + 1) * px);
+    const qa = h.orden === 6 ? " barra-qa" : "";
+    const rango = bonita(h._ini) + " → " + bonita(h._fin);
+    let real = "";
+    if(h.fecha_real_inicio || h.fecha_real_fin){
+      const ri = aFecha(h.fecha_real_inicio || h.fecha_real_fin);
+      const rf = aFecha(h.fecha_real_fin || h.fecha_real_inicio);
+      const dv = desviacion(h);
+      const tarde = (dv !== null && dv > 0) ? " tarde" : "";
+      real = `<div class="barra-real${tarde}" title="Real: ${bonita(ri)} → ${bonita(rf)}"
+                   style="left:${x(ri)}px;width:${Math.max(px,(diffDias(ri,rf)+1)*px)}px"></div>`;
+    }
+    return `<div class="rowg">
+      <div class="etq">${esc(recortar(h.nombre, 32))}</div>
+      <div class="barra-plan${qa}" title="Planificado: ${rango}" style="left:${izq}px;width:${an}px"></div>
+      <div class="fechabarra" style="left:${izq + an + 8}px">${rango}</div>
+      ${real}
+    </div>`;
+  }).join("");
+
+  const hoyX = (hoy() >= min && hoy() <= max) ? `<div class="linea hoy" style="left:${x(hoy())}px"><span>hoy</span></div>` : "";
+  const lineas = `
+    ${p.envioQA ? `<div class="linea" style="left:${x(p.envioQA)}px;border-left-color:#5C6169"><span style="color:#3F444B">envío a QA</span></div>` : ""}
+    <div class="linea" style="left:${x(p.inicioClases)}px"><span>inicio de clases</span></div>
+    ${hoyX}`;
+
+  return `<div class="tl" style="width:${ETQ + total*px + 190}px">
+    <div class="eje">${meses}${dias}</div>
+    <div style="position:relative">${franjas}${filas}${lineas}</div>
+  </div>`;
+}
+
+/* ═══════════ CONSOLIDADO ═══════════ */
+function pintarConsolidado(){
+  const datos = estado.asignaturas.slice()
+    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .map(a => ({a, p: planificar(a)}));
+  if(!datos.length){ document.getElementById("consolidado").innerHTML = '<div class="vacio">Sin asignaturas.</div>'; return; }
+
+  let min = datos[0].p.partida, max = datos[0].p.inicioClases;
+  datos.forEach(({p}) => { if(p.partida < min) min = p.partida; if(p.inicioClases > max) max = p.inicioClases; });
+  min = masDias(min, -5); max = masDias(max, 8);
+  const total = diffDias(min, max);
+  const px = 3.4, ETQ = 260;
+  const x = d => ETQ + diffDias(min, d) * px;
+
+  let eje = "";
+  let cur = new Date(min.getFullYear(), min.getMonth(), 1);
+  while(cur <= max){
+    if(cur >= min) eje += `<div class="mes" style="left:${x(cur)}px">${MESES[cur.getMonth()]} ${String(cur.getFullYear()).slice(2)}</div>`;
+    cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1);
+  }
+
+  const filas = datos.map(({a,p}) => {
+    const trabajo = `<div class="barra-plan" style="top:8px;height:14px;left:${x(p.partida)}px;width:${Math.max(4,(diffDias(p.partida,p.finCabeza)+1)*px)}px"></div>`;
+    const qa = `<div class="barra-plan barra-qa" style="top:8px;height:14px;left:${x(p.envioQA)}px;width:${Math.max(4,(diffDias(p.envioQA,p.retroQA)+1)*px)}px"></div>`;
+    const cola = `<div style="position:absolute;top:8px;height:14px;left:${x(p.retroQA)}px;width:${Math.max(4,(diffDias(p.retroQA,p.inicioClases)+1)*px)}px;background:#EDEFF3;border:1px solid var(--borde);border-radius:3px"></div>`;
+    const marca = `<div style="position:absolute;top:2px;height:26px;left:${x(p.inicioClases)}px;width:3px;background:var(--rojo)"></div>`;
+    return `<div class="rowg" style="height:30px">
+      <div class="etq" style="top:6px"><span class="sem ${p.semaforo}" style="display:inline-block;margin-right:6px"></span>${esc(recortar(a.programa + " · " + a.nombre, 36))}</div>
+      ${cola}${qa}${trabajo}${marca}
+    </div>`;
+  }).join("");
+
+  const hoyL = (hoy() >= min && hoy() <= max) ? `<div class="linea hoy" style="left:${x(hoy())}px"><span>hoy</span></div>` : "";
+  document.getElementById("consolidado").innerHTML =
+    `<div class="tl" style="width:${ETQ + total*px + 90}px">
+      <div class="eje">${eje}</div>
+      <div style="position:relative">${filas}${hoyL}</div>
+    </div>`;
+}
+
+function pintarCarga(){
+  const conteo = {};
+  estado.asignaturas.forEach(a => {
+    const p = planificar(a);
+    p.hitos.filter(h => h.activo && h._ini && h.responsable.includes("Hackea")).forEach(h => {
+      let d = new Date(h._ini.getTime());
+      while(d <= h._fin){
+        const lun = masDias(d, -((d.getDay() + 6) % 7));
+        const k = aTexto(lun);
+        conteo[k] = conteo[k] || new Set();
+        conteo[k].add(a.id);
+        d = masDias(d, 7);
+      }
+    });
+  });
+  const claves = Object.keys(conteo).sort();
+  if(!claves.length){ document.getElementById("carga").innerHTML = '<div class="vacio">Sin datos de carga.</div>'; return; }
+  const maxv = Math.max.apply(null, claves.map(k => conteo[k].size));
+  document.getElementById("carga").innerHTML =
+    `<div style="display:flex;align-items:flex-end;gap:4px;height:150px;min-width:${claves.length*26}px">
+      ${claves.map(k => {
+        const v = conteo[k].size;
+        const alto = Math.round((v / maxv) * 110) + 12;
+        const col = v >= 5 ? "var(--rojo)" : (v >= 3 ? "var(--ambar)" : "var(--azul)");
+        const f = aFecha(k);
+        return `<div style="text-align:center;width:22px">
+          <div style="font-size:10px;color:var(--muted)">${v}</div>
+          <div title="Semana del ${bonita(f)}" style="height:${alto}px;background:${col};border-radius:3px 3px 0 0;opacity:.85"></div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px">${f.getDate()}/${f.getMonth()+1}</div>
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
+
+
+/* ═══════════ ALERTAS Y FUENTE ═══════════ */
+function pintarAlertas(al){
+  const p = document.getElementById("alertasPlan");
+  p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
+      <span class="sem ${x.nivel}"></span>
+      <div class="nom">${esc(x.a.nombre)}<small>${esc(x.msg)}</small></div>
+      <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
+    </div>`).join("") : '<div class="vacio">Ninguna asignatura necesita una decisión hoy.</div>';
+
+  const v = document.getElementById("alertasVencidas");
+  v.innerHTML = al.vencidas.length ? al.vencidas.map(x => `<div class="fila">
+      <span class="sem r"></span>
+      <div class="nom">${esc(x.a.nombre)}
+        <small>${esc(x.hito.nombre)} · terminaba el ${bonita(x.hito._fin)}, hace ${x.dias} días · responsable ${esc(x.hito.responsable)}</small></div>
+      <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
+    </div>`).join("") : '<div class="vacio">Todo lo que ya venció está registrado.</div>';
+
+  const d = document.getElementById("alertasDatos");
+  d.innerHTML = estado.problemas.length ? estado.problemas.map(x => `<div class="fila">
+      <span class="sem a"></span>
+      <div class="nom">${esc(x.donde)}${x.fila && x.fila !== "—" ? ", fila " + esc(String(x.fila)) : ""}
+        <small>${esc(x.msg)}</small></div>
+    </div>`).join("") : '<div class="vacio">La planilla se leyó completa, sin problemas.</div>';
+}
+
+function pintarFuente(){
+  const e = document.getElementById("estadoFuente");
+  e.innerHTML = HAY_SHEET
+    ? `<div class="aviso">Los datos vienen de la planilla de Google Sheets, pestañas RUTA, HITOS y FERIADOS. Esta herramienta solo muestra: todo se edita en la planilla.</div>
+       <div style="font-size:13.5px">Última lectura: ${estado.leidoEn || "sin datos"}. Google guarda una copia en caché unos minutos, así que un cambio recién guardado puede tardar en aparecer.</div>
+       <div style="margin-top:12px"><a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a></div>`
+    : `<div class="aviso alerta">Falta pegar el ID de la planilla al inicio del archivo index.html.</div>`;
+}
+
+async function recargar(){
+  document.getElementById("pillActualizado").textContent = "Actualizando…";
+  await cargarDatos();
+  pintarTodo();
+  avisar("Datos actualizados.");
+}
+
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function recortar(s, n){ return s.length > n ? s.slice(0, n-1) + "…" : s; }
+let tToast;
+function avisar(m){
+  const t = document.getElementById("toast");
+  t.textContent = m; t.classList.remove("oculto");
+  clearTimeout(tToast);
+  tToast = setTimeout(() => t.classList.add("oculto"), 5200);
+}
+
+(async function init(){
+  await cargarDatos();
+  llenarSelector();
+  pintarTodo();
+})();
+</script>
+</body>
+</html>
