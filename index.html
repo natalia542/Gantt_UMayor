@@ -118,6 +118,34 @@ td.num{font-family:var(--titulo);font-size:13px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--tinta);color:#fff;padding:11px 18px;border-radius:8px;font-size:14px;z-index:80;max-width:90vw}
 .vacio{text-align:center;padding:36px 12px;color:var(--muted);font-size:14px}
 footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
+.uprog{display:flex;gap:3px;margin:10px 0 8px}
+.useg{flex:1;height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+      font-size:11px;text-align:center;padding:0 2px;background:#EDEFF3;color:#6E747D;border:1px solid var(--borde)}
+.useg.hecho{background:#DFF1E8;color:#0F6E56;border-color:#9FD9C3}
+.useg.curso{background:#0090F8;color:#fff;border-color:#0071c6;font-weight:bold}
+.useg.curso.tarde{background:var(--rojo);border-color:#8f2b20}
+.useg:first-child{border-radius:6px 0 0 6px}
+.useg:last-child{border-radius:0 6px 6px 0}
+.uchip{font-size:11.5px;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.uchip.ok{background:#DFF1E8;color:#0F6E56}
+.uchip.espera{background:#FFF1D6;color:#7A4E00}
+.uchip.tarde{background:#FBE3E0;color:#98281c}
+.uchip.fin{background:var(--superficie);color:var(--muted)}
+.ubloque{border-top:1px solid var(--borde);padding:16px 0}
+.ubloque:first-child{border-top:none}
+.ufrase{font-size:13.5px;color:var(--cuerpo);margin-top:2px}
+.ufrase b{color:var(--tinta)}
+.vlinea{position:relative;padding-left:26px;margin-top:10px}
+.vlinea:before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--borde)}
+.vitem{position:relative;padding:0 0 16px 0}
+.vpunto{position:absolute;left:-24px;top:4px;width:12px;height:12px;border-radius:50%;
+        background:var(--blanco);border:2px solid var(--borde)}
+.vitem.hecho .vpunto{background:var(--verde);border-color:var(--verde)}
+.vitem.curso .vpunto{background:var(--azul);border-color:var(--azul)}
+.vitem.tarde .vpunto{background:var(--rojo);border-color:var(--rojo)}
+.vtit{font-size:14px;color:var(--tinta);font-weight:bold}
+.vmeta{font-size:12.5px;color:var(--muted)}
+.vreal{font-size:12.5px;color:var(--cuerpo);margin-top:2px}
 @media(max-width:640px){ .marca h1{font-size:15px} main{padding:14px 12px 50px} }
 @media print{ .barra,.btn,header .deco,footer{display:none} body{background:#fff} .card{break-inside:avoid} }
 
@@ -139,7 +167,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 
 <div class="barra">
   <div class="barra-in">
-    <button class="tab on" data-t="asig" onclick="irA('asig')">Asignaturas</button>
+    <button class="tab on" data-t="uni" onclick="irA('uni')">Universidad</button>
+    <button class="tab" data-t="asig" onclick="irA('asig')">Asignaturas</button>
     <button class="tab" data-t="det" onclick="irA('det')">Detalle</button>
     <button class="tab" data-t="cons" onclick="irA('cons')">Consolidado</button>
     <button class="tab" data-t="alertas" onclick="irA('alertas')">Alertas <span id="contAlertas"></span></button>
@@ -152,7 +181,22 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 </div>
 
 <main>
-  <section id="v-asig">
+  <section id="v-uni">
+    <div class="card">
+      <h2>Estado por programa</h2>
+      <div class="desc">Dónde está cada asignatura hoy, quién debe actuar y si va dentro de lo planificado.</div>
+      <div style="max-width:300px;margin-bottom:6px">
+        <label>Programa</label>
+        <select id="fUni" onchange="pintarUniversidad()">
+          <option value="">Todos los programas</option>
+          <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
+        </select>
+      </div>
+    </div>
+    <div id="universidad"></div>
+  </section>
+
+  <section id="v-asig" class="oculto">
     <div class="card">
       <h2>Estado de las asignaturas</h2>
       <div class="desc">La fecha de envío de los recursos al docente determina toda la carta. La holgura es lo que queda entre el término del montaje y el envío a QA.</div>
@@ -184,6 +228,13 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <div class="card">
       <h2>Todas las asignaturas en el tiempo</h2>
       <div class="desc">Cada barra muestra el tramo de trabajo de Hackea, la ventana de QA y el tramo final antes del inicio de clases.</div>
+      <div style="max-width:280px;margin-bottom:14px">
+        <label>Programa</label>
+        <select id="fCons" onchange="pintarConsolidado(); pintarCarga();">
+          <option value="">Todos los programas</option>
+          <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
+        </select>
+      </div>
       <div class="scroll" id="consolidado"></div>
       <div class="leyenda">
         <span><i style="background:#7CC6FB;border:1px solid var(--azul)"></i>Trabajo Hackea + docente</span>
@@ -194,7 +245,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     </div>
     <div class="card">
       <h2>Carga por semana</h2>
-      <div class="desc">Cantidad de asignaturas con trabajo de Hackea activo cada semana. Los picos son los topes que hay que anticipar.</div>
+      <div class="desc">Cantidad de asignaturas con trabajo de Hackea activo cada semana, según el programa seleccionado arriba. Los picos son los topes que hay que anticipar.</div>
       <div class="scroll" id="carga"></div>
     </div>
   </section>
@@ -269,7 +320,7 @@ const URL_SHEET = SHEET_ID ? "https://docs.google.com/spreadsheets/d/" + SHEET_I
 const LS_CACHE = "hackea_ruta_cache";
 
 let estado = { asignaturas: [], problemas: [], leidoEn: null };
-let vistaActual = "asig";
+let vistaActual = "uni";
 let feriados = [];
 
 const FERIADOS_DEFECTO = [
@@ -714,7 +765,7 @@ function calcularAlertas(){
 function irA(t){
   vistaActual = t;
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.t === t));
-  ["asig","det","cons","alertas","cfg"].forEach(x => document.getElementById("v-"+x).classList.toggle("oculto", x !== t));
+  ["uni","asig","det","cons","alertas","cfg"].forEach(x => document.getElementById("v-"+x).classList.toggle("oculto", x !== t));
   pintarTodo();
 }
 
@@ -722,7 +773,17 @@ function pintarTodo(){
   const al = calcularAlertas();
   const total = al.plan.filter(x => x.nivel === "r").length + al.vencidas.length + estado.problemas.length;
   document.getElementById("contAlertas").textContent = total ? "(" + total + ")" : "";
-  document.getElementById("pillActualizado").textContent = estado.leidoEn ? "Datos del " + estado.leidoEn : "Sin conectar";
+  const ult = ultimoRegistro();
+  const pill = document.getElementById("pillActualizado");
+  if(ult){
+    const d = diffDias(aFecha(ult), hoy());
+    pill.textContent = "Último avance: " + bonita(aFecha(ult)) + (d > 3 ? " · hace " + d + " días" : "");
+    pill.style.borderColor = d > 3 ? "var(--rojo)" : "var(--borde)";
+    pill.style.color = d > 3 ? "var(--rojo)" : "var(--cuerpo)";
+  }else{
+    pill.textContent = estado.leidoEn ? "Sin avances registrados" : "Sin conectar";
+  }
+  if(vistaActual === "uni") pintarUniversidad();
   if(vistaActual === "asig") pintarLista();
   if(vistaActual === "det"){ llenarSelector(); pintarDetalle(); }
   if(vistaActual === "cons"){ pintarConsolidado(); pintarCarga(); }
@@ -825,14 +886,16 @@ function pintarDetalle(){
     return `<div class="card">
       <h2>${esc(nombreFase(clave))}</h2>
       <div class="desc">La barra clara es lo planificado. La barra sólida abajo es lo que realmente ocurrió.</div>
-      <div class="scroll">${gantt(sub, pf)}</div>
-      <div class="leyenda">
-        <span><i style="background:#7CC6FB;border:1.5px solid var(--azul)"></i>Planificado</span>
-        <span><i style="background:var(--azul)"></i>Real</span>
-        <span><i style="background:var(--rojo)"></i>Real fuera de plazo</span>
-        <span><i style="background:#B4BAC3;border:1px solid #6E747D"></i>QA Educación Virtual</span>
-      </div>
-      ${tablaHitos(pf)}
+      ${esMovil()
+        ? lineaVertical(pf)
+        : `<div class="scroll">${gantt(sub, pf)}</div>
+           <div class="leyenda">
+             <span><i style="background:#7CC6FB;border:1.5px solid var(--azul)"></i>Planificado</span>
+             <span><i style="background:var(--azul)"></i>Real</span>
+             <span><i style="background:var(--rojo)"></i>Real fuera de plazo</span>
+             <span><i style="background:#B4BAC3;border:1px solid #6E747D"></i>QA Educación Virtual</span>
+           </div>
+           ${tablaHitos(pf)}`}
     </div>`;
   }).join("");
 
@@ -953,8 +1016,14 @@ function gantt(a, p){
 }
 
 /* ═══════════ CONSOLIDADO ═══════════ */
+function asignaturasFiltradas(){
+  const el = document.getElementById("fCons");
+  const f = el ? el.value : "";
+  return estado.asignaturas.filter(a => !f || a.programa === f);
+}
+
 function pintarConsolidado(){
-  const datos = estado.asignaturas.slice()
+  const datos = asignaturasFiltradas().slice()
     .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
     .map(a => ({a, p: planificar(a)}));
   if(!datos.length){ document.getElementById("consolidado").innerHTML = '<div class="vacio">Sin asignaturas.</div>'; return; }
@@ -994,7 +1063,7 @@ function pintarConsolidado(){
 
 function pintarCarga(){
   const conteo = {};
-  estado.asignaturas.forEach(a => {
+  asignaturasFiltradas().forEach(a => {
     const p = planificar(a);
     p.hitos.filter(h => h.activo && h._ini && h.responsable.includes("Hackea")).forEach(h => {
       let d = new Date(h._ini.getTime());
@@ -1028,11 +1097,165 @@ function pintarCarga(){
 
 
 
+function esMovil(){ return (window.innerWidth || 1200) < 760; }
+
+/* En pantallas angostas la carta Gantt se reemplaza por una línea vertical:
+   misma información, ordenada como se lee en un teléfono. */
+function lineaVertical(p){
+  const h = hoy();
+  return `<div class="vlinea">${p.hitos.filter(x => x.activo && x._ini).map(x => {
+    const d = desviacion(x);
+    let cls = "", pie = "";
+    if(x.fecha_real_fin){
+      cls = (d !== null && d > 0) ? "tarde" : "hecho";
+      pie = `<div class="vreal">Ocurrió: ${bonita(aFecha(x.fecha_real_inicio || x.fecha_real_fin))} → ${bonita(aFecha(x.fecha_real_fin))}
+             ${d !== null ? `<span class="desv ${d > 0 ? "pos" : "neg"}">${d > 0 ? "+" : ""}${d} d</span>` : ""}</div>`;
+      if(x.atribuido_a) pie += `<div class="vmeta">Atribuido a ${esc(x.atribuido_a)}${x.nota ? ": " + esc(x.nota) : ""}</div>`;
+    }else if(x._fin < h){
+      cls = "tarde";
+      pie = `<div class="vreal" style="color:var(--rojo)">Sin registrar, vencía hace ${diffDias(x._fin, h)} días</div>`;
+    }else if(x._ini <= h){
+      cls = "curso";
+      pie = `<div class="vreal">En curso</div>`;
+    }
+    return `<div class="vitem ${cls}"><div class="vpunto"></div>
+      <div class="vtit">${esc(x.nombre)}</div>
+      <div class="vmeta">${esc(x.responsable)} · ${bonita(x._ini)} → ${bonita(x._fin)}</div>
+      ${pie}</div>`;
+  }).join("")}</div>`;
+}
+
+/* ═══════════ VISTA UNIVERSIDAD ═══════════ */
+const GRUPOS = [
+  {n:"Producción",           ordenes:[1]},
+  {n:"Revisión del docente", ordenes:[2,3]},
+  {n:"Montaje",              ordenes:[4,5]},
+  {n:"QA U. Mayor",          ordenes:[6]},
+  {n:"Cierre",               ordenes:[7,8]}
+];
+
+/* Fecha del último avance efectivamente registrado en la planilla */
+function ultimoRegistro(){
+  let max = null;
+  estado.asignaturas.forEach(a => {
+    Object.keys(a.fases).forEach(f => a.fases[f].forEach(h => {
+      const r = h.fecha_real_fin || h.fecha_real_inicio;
+      if(r && (!max || r > max)) max = r;
+    }));
+  });
+  return max;
+}
+
+function situacion(p){
+  const h = hoy();
+  const activos = p.hitos.filter(x => x.activo && x._ini);
+  const grupos = GRUPOS.map(g => {
+    const hs = activos.filter(x => g.ordenes.indexOf(x.orden) >= 0);
+    if(!hs.length) return {n:g.n, estado:"na", hs:[]};
+    const cerrados = hs.filter(x => x.fecha_real_fin).length;
+    const fin = hs.reduce((m,x) => x._fin > m ? x._fin : m, hs[0]._fin);
+    const ini = hs.reduce((m,x) => x._ini < m ? x._ini : m, hs[0]._ini);
+    let est = "pendiente";
+    if(cerrados === hs.length) est = "hecho";
+    else if(h >= ini || hs.some(x => x.fecha_real_inicio)) est = "curso";
+    return {n:g.n, estado:est, hs:hs, ini:ini, fin:fin};
+  });
+
+  const actual = grupos.filter(g => g.estado === "curso")[0]
+              || grupos.filter(g => g.estado === "pendiente" && g.hs.length)[0];
+  const cerrado = grupos.filter(g => g.hs.length).every(g => g.estado === "hecho");
+
+  let pendiente = null;
+  if(actual) pendiente = actual.hs.filter(x => !x.fecha_real_fin)[0] || actual.hs[actual.hs.length-1];
+
+  let retraso = 0, tarde = false;
+  if(pendiente && !pendiente.fecha_real_fin && pendiente._fin < h){
+    retraso = diffDias(pendiente._fin, h); tarde = true;
+  }
+  // Un desvío ya cerrado también cuenta como atraso arrastrado
+  let arrastre = 0;
+  activos.forEach(x => { const d = desviacion(x); if(d && d > 0) arrastre += d; });
+
+  return {grupos, actual, pendiente, retraso, tarde, cerrado, arrastre};
+}
+
+function fraseUniversidad(a, p, sit){
+  if(sit.cerrado) return "Todas las etapas cerradas. Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
+  const x = sit.pendiente;
+  if(!x) return "Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
+  let quien = "Hackea";
+  if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
+  else if(x.responsable.indexOf("Hackea") >= 0 && x.responsable.indexOf("Docente") >= 0) quien = "Hackea junto a " + (a.docente || "el docente");
+  else if(x.responsable.indexOf("Docente") >= 0) quien = a.docente || "El docente";
+  let f = quien + " tiene a cargo <b>" + esc(x.nombre.toLowerCase()) + "</b>, con plazo hasta el <b>" + bonita(x._fin) + "</b>. ";
+  if(sit.tarde) f += "Lleva " + sit.retraso + " días de atraso sobre lo planificado. ";
+  else if(x.fecha_real_inicio) f += "Va dentro de lo planificado. ";
+  else if(x._ini > hoy()) f += "Comienza el " + bonita(x._ini) + ". ";
+  else f += "Va dentro de lo planificado. ";
+  if(sit.arrastre) f += "Acumula " + sit.arrastre + " días de desvío en etapas ya cerradas. ";
+  f += "Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
+  return f;
+}
+
+function pintarUniversidad(){
+  const el = document.getElementById("fUni");
+  const filtro = el ? el.value : "";
+  const cont = document.getElementById("universidad");
+  const datos = estado.asignaturas
+    .filter(a => !filtro || a.programa === filtro)
+    .sort((a,b) => (a.programa + a.fecha_inicio_clases).localeCompare(b.programa + b.fecha_inicio_clases));
+  if(!datos.length){ cont.innerHTML = '<div class="card"><div class="vacio">Sin asignaturas para ese filtro.</div></div>'; return; }
+
+  const ultimo = ultimoRegistro();
+  const dias = ultimo ? diffDias(aFecha(ultimo), hoy()) : null;
+  const aviso = ultimo
+    ? (dias > 3
+        ? '<div class="aviso alerta">Último avance registrado el ' + bonita(aFecha(ultimo)) + ', hace ' + dias + ' días. Puede haber movimientos posteriores todavía no cargados.</div>'
+        : '<div class="aviso">Último avance registrado el ' + bonita(aFecha(ultimo)) + '.</div>')
+    : '<div class="aviso alerta">Todavía no hay avances reales registrados.</div>';
+
+  const programas = [];
+  datos.forEach(a => { if(programas.indexOf(a.programa) < 0) programas.push(a.programa); });
+
+  cont.innerHTML = aviso + programas.map(prog => {
+    const grupo = datos.filter(a => a.programa === prog);
+    return `<div class="card">
+      <h2>${esc(prog)}</h2>
+      <div class="desc">${grupo.length} asignatura(s) en producción</div>
+      ${grupo.map(a => {
+        const p = planificar(a);
+        const sit = situacion(p);
+        let chip = "espera", txt = "En Hackea";
+        if(sit.cerrado){ chip = "fin"; txt = "Cerrada"; }
+        else if(sit.tarde){ chip = "tarde"; txt = "Con atraso"; }
+        else if(sit.pendiente && sit.pendiente.responsable.indexOf("Docente") >= 0){ chip = "espera"; txt = "Acción del docente"; }
+        else if(sit.pendiente && sit.pendiente.responsable.indexOf("Educación") >= 0){ chip = "espera"; txt = "En QA de U. Mayor"; }
+        else { chip = "ok"; txt = "Al día, en Hackea"; }
+        return `<div class="ubloque">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:bold;color:var(--tinta);font-size:14.5px">${esc(a.nombre)}</div>
+            <span class="uchip ${chip}">${txt}</span>
+          </div>
+          <div class="uprog">
+            ${sit.grupos.map(g => {
+              let cls = g.estado === "hecho" ? "hecho" : (g.estado === "curso" ? "curso" : "");
+              if(g.estado === "curso" && sit.tarde) cls += " tarde";
+              return `<div class="useg ${cls}">${g.n}</div>`;
+            }).join("")}
+          </div>
+          <div class="ufrase">${fraseUniversidad(a, p, sit)}</div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+}
+
 /* ═══════════ ALERTAS Y FUENTE ═══════════ */
 function pintarAlertas(al){
   const p = document.getElementById("alertasPlan");
   p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
       <span class="sem ${x.nivel}"></span>
+      <span class="tag azul">${esc(x.a.programa)}</span>
       <div class="nom">${esc(x.a.nombre)}<small>${esc(x.msg)}</small></div>
       <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
     </div>`).join("") : '<div class="vacio">Ninguna asignatura necesita una decisión hoy.</div>';
@@ -1040,6 +1263,7 @@ function pintarAlertas(al){
   const v = document.getElementById("alertasVencidas");
   v.innerHTML = al.vencidas.length ? al.vencidas.map(x => `<div class="fila">
       <span class="sem r"></span>
+      <span class="tag azul">${esc(x.a.programa)}</span>
       <div class="nom">${esc(x.a.nombre)}
         <small>${esc(x.hito.nombre)} · terminaba el ${bonita(x.hito._fin)}, hace ${x.dias} días · responsable ${esc(x.hito.responsable)}</small></div>
       <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
@@ -1078,6 +1302,12 @@ function avisar(m){
   clearTimeout(tToast);
   tToast = setTimeout(() => t.classList.add("oculto"), 5200);
 }
+
+let tResize;
+window.addEventListener("resize", () => {
+  clearTimeout(tResize);
+  tResize = setTimeout(() => { if(vistaActual === "det") pintarDetalle(); }, 250);
+});
 
 (async function init(){
   await cargarDatos();
