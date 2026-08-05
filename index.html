@@ -252,6 +252,11 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 
   <section id="v-alertas" class="oculto">
     <div class="card">
+      <h2>Cierre del contrato</h2>
+      <div class="desc">Todas las asignaturas deben quedar montadas y aprobadas por Educación Virtual antes de esa fecha.</div>
+      <div id="panelContrato"></div>
+    </div>
+    <div class="card">
       <h2>Alertas de planificación</h2>
       <div class="desc">Lo que necesita una decisión.</div>
       <div id="alertasPlan"></div>
@@ -320,6 +325,11 @@ const URL_SHEET = SHEET_ID ? "https://docs.google.com/spreadsheets/d/" + SHEET_I
 const LS_CACHE = "hackea_ruta_cache";
 
 let estado = { asignaturas: [], problemas: [], leidoEn: null };
+/* Segundo techo: fecha en que el contrato exige la asignatura montada y
+   aprobada por Educación Virtual. Manda el más exigente de los dos techos,
+   este o el inicio de clases. */
+let CONTRATO = aFechaSegura("2026-12-31");
+function aFechaSegura(t){ const p = String(t).split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
 let vistaActual = "uni";
 let feriados = [];
 
@@ -454,8 +464,8 @@ function planFijado(asig, inicioClases){
 
 function planificar(asig){
   const inicioClases = aFecha(asig.fecha_inicio_clases);
-  if(!inicioClases) return planFijado(asig, null);
   if(asig.plan_manual) return planFijado(asig, inicioClases);
+  if(!inicioClases && !CONTRATO) return planFijado(asig, null);
   if(asig.elastico === false) return armarPlan(asig, inicioClases, null);
 
   // Se intenta el plan holgado y se va comprimiendo solo lo necesario
@@ -483,10 +493,15 @@ function armarPlan(asig, inicioClases, recortes){
       : (asig.dias_ajustes_qa ?? 5);
   const qa = asig.dias_qa ?? 10;
 
-  const fecha100 = retrocederHabil(inicioClases, plataforma + 1);
+  let fecha100 = inicioClases ? retrocederHabil(inicioClases, plataforma + 1) : null;
+  let limitadoPorContrato = false;
+  if(CONTRATO && (!fecha100 || fecha100 > CONTRATO)){
+    fecha100 = retrocederHabil(CONTRATO, 1);
+    limitadoPorContrato = true;
+  }
   const retroQA  = retrocederHabil(fecha100, ajustes + 1);
   const envioQA  = retrocederHabil(retroQA, qa + 1);
-  const colchon  = diffDias(fecha100, inicioClases);
+  const colchon  = inicioClases ? diffDias(fecha100, inicioClases) : null;
 
   const hitos = (asig.hitos || []).slice().sort((a,b) => a.orden - b.orden);
   const set = (o, i, f) => { const h = hitos.find(x => x.orden === o); if(h){ h._ini = i; h._fin = f; } };
@@ -522,10 +537,11 @@ function armarPlan(asig, inicioClases, recortes){
   let semaforo = "v";
   if(holgura < 0) semaforo = "r"; else if(holgura <= 4) semaforo = "a";
   if(propuesta && holgura >= 0) semaforo = "g";
+  if(ultimoTren < hoy()) semaforo = "r";
 
   return { inicioClases, fecha100, retroQA, envioQA, hitos, holgura, semaforo, partida,
            finCabeza, finProceso: inicioClases, ultimoTren, propuesta, manual:false,
-           colchon, diasQAplan: qa, ajustes,
+           colchon, diasQAplan: qa, ajustes, limitadoPorContrato,
            recortes: (recortes || []).slice() };
 }
 
@@ -615,6 +631,15 @@ async function cargarDatos(){
     ruta  = await traer("RUTA");
     hitos = await traer("HITOS");
     try{ fer = await traer("FERIADOS"); }catch(e){ fer = []; }
+    try{
+      const cfg = await traer("CONFIG");
+      cfg.forEach(c => {
+        if((c.clave || "").toLowerCase() === "fecha_termino_contrato"){
+          const f = leerFecha(c.valor);
+          if(f && f !== "__ERROR__") CONTRATO = aFecha(f);
+        }
+      });
+    }catch(e){}
   }catch(e){
     const cache = JSON.parse(localStorage.getItem(LS_CACHE) || "null");
     if(cache){
@@ -752,6 +777,13 @@ function calcularAlertas(){
   const h = hoy();
   estado.asignaturas.forEach(a => {
     const p = planificar(a);
+    if(p.limitadoPorContrato){
+      const nivel = (p.holgura < 0 || p.ultimoTren < h) ? "r" : "a";
+      plan.push({a, nivel, msg:"Manda el término de contrato, no el inicio de clases" +
+        (a.fecha_inicio_clases ? " del " + bonita(aFecha(a.fecha_inicio_clases)) : "") +
+        ". Para cerrar antes del " + bonita(CONTRATO) + ", los recursos tienen que salir al docente a más tardar el " +
+        bonita(p.ultimoTren) + (p.ultimoTren < h ? ", fecha que ya pasó." : ".")});
+    }
     if(!a.fecha_inicio_clases){
       const r = rutaCompleta(a);
       if(r.proyeccion){
@@ -940,6 +972,7 @@ function pintarDetalle(){
       ${tarjeta("Envío a QA Ed. Virtual", bonita(p.envioQA))}
     </div>
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
+    ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
     ${tarjetaRuta(a, ruta)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       ${URL_SHEET ? `<a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>` : ""}
@@ -1301,6 +1334,39 @@ function tarjetaRuta(a, ruta){
     ${pie}</div>`;
 }
 
+function pintarContrato(){
+  const cont = document.getElementById("panelContrato");
+  if(!cont) return;
+  if(!CONTRATO){ cont.innerHTML = '<div class="vacio">Sin fecha de término definida.</div>'; return; }
+  const h = hoy();
+  const semanas = Math.max(0, Math.round(diffDias(h, CONTRATO) / 7));
+  const datos = estado.asignaturas.map(a => ({a, p: planificar(a)}));
+  const abiertas = datos.filter(x => {
+    const cierre = x.p.manual ? x.p.finProceso : x.p.fecha100;
+    return cierre && !x.p.hitos.filter(z => z.activo).every(z => z.fecha_real_fin);
+  });
+  const pasadas = datos.filter(x => x.p.ultimoTren && x.p.ultimoTren < h && !x.p.manual);
+  const fuera = datos.filter(x => {
+    const cierre = x.p.manual ? x.p.finProceso : x.p.fecha100;
+    return cierre && cierre > CONTRATO;
+  });
+  const porMes = abiertas.length && semanas ? (abiertas.length / Math.max(1, semanas / 4.3)).toFixed(1) : "0";
+
+  cont.innerHTML = `
+    <div class="grid g3" style="margin-bottom:12px">
+      ${tarjeta("Cierre exigido", bonita(CONTRATO))}
+      ${tarjeta("Semanas restantes", semanas)}
+      ${tarjeta("Asignaturas abiertas", abiertas.length)}
+      ${tarjeta("Ritmo necesario", porMes + " por mes")}
+    </div>
+    ${fuera.length ? `<div class="aviso alerta"><b>${fuera.length} asignatura(s) cierran después del ${bonita(CONTRATO)}.</b>
+       ${fuera.map(x => esc(x.a.nombre)).join(" · ")}</div>` : ""}
+    ${pasadas.length ? `<div class="aviso alerta"><b>${pasadas.length} asignatura(s) ya pasaron su fecha tope de envío al docente.</b>
+       ${pasadas.map(x => esc(x.a.nombre) + " (tope " + bonita(x.p.ultimoTren) + ")").join(" · ")}</div>` : ""}
+    ${(!fuera.length && !pasadas.length) ? '<div class="aviso">Todas las asignaturas caben dentro del plazo con la planificación actual.</div>' : ""}
+    <div style="font-size:13px;color:var(--muted);margin-top:10px">El ritmo necesario supone repartir las asignaturas abiertas en las semanas que quedan. No considera la carga que ya está comprometida en cada semana; para eso está la vista de carga del consolidado.</div>`;
+}
+
 /* ═══════════ VISTA UNIVERSIDAD ═══════════ */
 const GRUPOS = [
   {n:"Producción",           ordenes:[1]},
@@ -1436,6 +1502,7 @@ function pintarUniversidad(){
 
 /* ═══════════ ALERTAS Y FUENTE ═══════════ */
 function pintarAlertas(al){
+  pintarContrato();
   const p = document.getElementById("alertasPlan");
   p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
       <span class="sem ${x.nivel}"></span>
