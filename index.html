@@ -436,13 +436,15 @@ function planFijado(asig, inicioClases){
   const finCabeza = cabeza.length ? cabeza[cabeza.length-1]._fin : partida;
   const finProceso = vivos.reduce((m,h) => h._fin > m ? h._fin : m, vivos[0] ? vivos[0]._fin : inicioClases);
 
-  const colchon = diffDias(finProceso, inicioClases);
+  const colchon = inicioClases ? diffDias(finProceso, inicioClases) : null;
   const holgura = envioQA ? diffDias(finCabeza, envioQA) : 0;
   const diasQAplan = habilesEntre(envioQA, retroQA);
   const feriadosQA = feriadosEn(envioQA, retroQA);
 
   let semaforo = "v";
-  if(colchon < 7) semaforo = "r"; else if(colchon <= 9) semaforo = "a";
+  if(colchon === null) semaforo = "g";
+  else if(colchon < 7) semaforo = "r";
+  else if(colchon <= 9) semaforo = "a";
 
   return { inicioClases, fecha100, retroQA, envioQA, hitos, holgura, semaforo,
            partida, finCabeza, finProceso, ultimoTren: partida, propuesta:false,
@@ -452,6 +454,7 @@ function planFijado(asig, inicioClases){
 
 function planificar(asig){
   const inicioClases = aFecha(asig.fecha_inicio_clases);
+  if(!inicioClases) return planFijado(asig, null);
   if(asig.plan_manual) return planFijado(asig, inicioClases);
   if(asig.elastico === false) return armarPlan(asig, inicioClases, null);
 
@@ -633,12 +636,14 @@ async function cargarDatos(){
     const id = f.id;
     if(!id){ anota("RUTA", f._fila, "Fila sin id. No se puede enlazar con sus hitos."); return; }
     if(porId[id]){ anota("RUTA", f._fila, "El id " + id + " está repetido."); return; }
-    const inicio = leerFecha(f.inicio_clases);
-    if(!inicio || inicio === "__ERROR__"){
-      anota("RUTA", f._fila, "«" + (f.asignatura || id) + "» no tiene una fecha de inicio de clases válida. Sin ese dato no se puede planificar.");
-      return;
+    let inicio = leerFecha(f.inicio_clases);
+    if(inicio === "__ERROR__"){
+      anota("RUTA", f._fila, "La fecha de inicio de clases de «" + (f.asignatura || id) + "» no se entiende. Formato esperado: 2027-03-15.");
+      inicio = null;
     }
-    const envio = leerFecha(f.envio_al_docente);
+    const envio = leerFecha(f.envio_recursos || f.envio_al_docente);
+    const envioCont = leerFecha(f.envio_contenido);
+    const envioGui = leerFecha(f.envio_guiones);
     if(envio === "__ERROR__") anota("RUTA", f._fila, "La fecha de envío al docente de «" + (f.asignatura || id) + "» no se entiende. Formato esperado: 2026-08-20.");
     const modo = (f.modo_plan || "calculado").toLowerCase();
     if(modo !== "calculado" && modo !== "acordado")
@@ -649,6 +654,9 @@ async function cargarDatos(){
       docente: f.docente || "", unidades: f.unidades || "", horas_asincronas: f.horas_asincronas || "",
       fecha_inicio_clases: inicio,
       fecha_envio_docente: (envio && envio !== "__ERROR__") ? envio : null,
+      fecha_envio_contenido: (envioCont && envioCont !== "__ERROR__") ? envioCont : null,
+      fecha_envio_guiones: (envioGui && envioGui !== "__ERROR__") ? envioGui : null,
+      dias_transito: parseInt(f.dias_transito, 10) || 5,
       plan_manual: modo === "acordado", etapa: f.etapa || "", comentario: f.comentario || "",
       bloqueos: leerBloqueos(f.bloqueos_docente),
       modo_calendario: "habiles", dias_revision_plataforma: 5, dias_ajustes_qa: 5, dias_qa: 10,
@@ -744,6 +752,17 @@ function calcularAlertas(){
   const h = hoy();
   estado.asignaturas.forEach(a => {
     const p = planificar(a);
+    if(!a.fecha_inicio_clases){
+      const r = rutaCompleta(a);
+      if(r.proyeccion){
+        plan.push({a, nivel:"a", msg:"Sin fecha de inicio de clases. Con los envíos cargados quedaría cerrada el " +
+          bonita(r.proyeccion.cierre) + ", así que las clases no podrían partir antes del " +
+          bonita(r.proyeccion.inicioPosible) + ". Hay que confirmar la fecha con Postgrado antes de comprometerla."});
+      }else{
+        plan.push({a, nivel:"a", msg:"Sin fecha de inicio de clases ni fecha de envío cargada. No se puede proyectar ni verificar si el plazo alcanza."});
+      }
+      return;
+    }
     if(p.manual){
       if(p.colchon < 7) plan.push({a, nivel:"r", msg:"El plan acordado cierra el " + bonita(p.finProceso) + ", a " + p.colchon + " días del inicio de clases. El mínimo es una semana."});
       if(p.diasQAplan !== null && p.diasQAplan < 10) plan.push({a, nivel:"r", msg:"La ventana de QA de este plan es de " + p.diasQAplan + " días hábiles sobre los 10 comprometidos con Educación Virtual."});
@@ -800,14 +819,15 @@ function pintarLista(){
     return;
   }
   const filas = estado.asignaturas.slice()
-    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => ({a, p: planificar(a)}))
     .filter(x => (!fp || x.a.programa === fp) && (!fe || x.p.semaforo === fe));
   if(!filas.length){ cont.innerHTML = '<div class="vacio">No hay asignaturas que cumplan el filtro.</div>'; return; }
 
   cont.innerHTML = filas.map(({a,p}) => {
     let texto, color;
-    if(p.manual){
+    if(!a.fecha_inicio_clases){ texto = "inicio de clases por confirmar"; color = "var(--ambar)"; }
+    else if(p.manual){
       if(p.colchon < 7){ texto = "cierra a " + p.colchon + " días del inicio"; color = "var(--rojo)"; }
       else { texto = p.colchon + " días antes de clases"; color = p.colchon <= 9 ? "var(--ambar)" : "var(--verde)"; }
     }else if(p.holgura < 0){ texto = Math.abs(p.holgura) + " días de atraso sobre el envío a QA"; color = "var(--rojo)"; }
@@ -821,7 +841,7 @@ function pintarLista(){
       ${p.manual ? '<span class="tag">Plan acordado</span>' : ""}
       ${(p.recortes && p.recortes.length) ? '<span class="tag" style="border-color:var(--rojo);color:var(--rojo)">Comprimido</span>' : ""}
       <span class="tag">Al docente ${bonita(p.partida)}</span>
-      <span class="tag">Inicio ${bonita(p.inicioClases)}</span>
+      <span class="tag">${p.inicioClases ? "Inicio " + bonita(p.inicioClases) : "Sin fecha de inicio"}</span>
       <span class="holg" style="color:${color}"><b>${texto}</b></span>
       <button class="btn mini sec" onclick="verDetalle('${a.id}')">Ver</button>
     </div>`;
@@ -838,7 +858,7 @@ function llenarSelector(){
   const s = document.getElementById("selAsig");
   const previo = s.value;
   s.innerHTML = estado.asignaturas.slice()
-    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => `<option value="${a.id}">${esc(a.programa)} · ${esc(a.nombre)}</option>`).join("");
   if(previo && estado.asignaturas.some(a => a.id === previo)) s.value = previo;
 }
@@ -880,9 +900,18 @@ function pintarDetalle(){
       alerta += `<div class="aviso alerta">No alcanzaba con los plazos holgados, así que se recortaron: <b>${p.recortes.map(o => ELASTICO[o].nota + " a " + ELASTICO[o].minimo + " día(s)").join(" · ")}</b>.</div>`;
   }
 
+  const ruta = rutaCompleta(a);
   const gantts = a.listaFases.map(clave => {
-    const sub = Object.assign({}, a, {hitos: a.fases[clave], plan_manual: (clave !== a.faseProduccion) ? true : a.plan_manual});
-    const pf = planificar(sub);
+    const k = claveFase(clave);
+    const sub = Object.assign({}, a, {hitos: a.fases[clave], plan_manual: a.plan_manual});
+    let pf;
+    if(k === "3"){ pf = planificar(sub); }
+    else if(a.plan_manual){ pf = planFijado(sub, aFecha(a.fecha_inicio_clases)); }
+    else { pf = ruta.fases[k] || planFijado(sub, aFecha(a.fecha_inicio_clases)); }
+    if(pf.vacio){
+      return `<div class="card"><h2>${esc(nombreFase(clave))}</h2>
+        <div class="aviso">Todavía sin fecha de envío al docente para esta fase. En cuanto se cargue en la planilla, la carta se dibuja sola.</div></div>`;
+    }
     return `<div class="card">
       <h2>${esc(nombreFase(clave))}</h2>
       <div class="desc">La barra clara es lo planificado. La barra sólida abajo es lo que realmente ocurrió.</div>
@@ -911,6 +940,7 @@ function pintarDetalle(){
       ${tarjeta("Envío a QA Ed. Virtual", bonita(p.envioQA))}
     </div>
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
+    ${tarjetaRuta(a, ruta)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       ${URL_SHEET ? `<a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>` : ""}
       <button class="btn sec" onclick="window.print()">Imprimir / PDF</button>
@@ -1024,7 +1054,7 @@ function asignaturasFiltradas(){
 
 function pintarConsolidado(){
   const datos = asignaturasFiltradas().slice()
-    .sort((a,b) => a.fecha_inicio_clases.localeCompare(b.fecha_inicio_clases))
+    .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => ({a, p: planificar(a)}));
   if(!datos.length){ document.getElementById("consolidado").innerHTML = '<div class="vacio">Sin asignaturas.</div>'; return; }
 
@@ -1125,6 +1155,152 @@ function lineaVertical(p){
   }).join("")}</div>`;
 }
 
+/* ═══════════ FASES 1 Y 2 ═══════════ */
+/* Cada fase arranca con un envío al docente. Las etapas previas al gatillo
+   (reunión inicial, desarrollo, elaboración de guiones) no tienen plazo
+   comprometido: se dibujan solo cuando tienen fecha real registrada. */
+const DUR_FASE = {
+  "1": {gatillo:3, sinPlazo:[1,2], dur:{3:1, 4:10, 5:3, 6:5, 7:1}, nombre:"Desarrollo de contenido", campo:"fecha_envio_contenido"},
+  "2": {gatillo:2, sinPlazo:[1],   dur:{2:1, 3:5,  4:3, 5:5, 6:1}, nombre:"Guionización",            campo:"fecha_envio_guiones"}
+};
+function claveFase(c){ return String(c || "3").trim().charAt(0); }
+
+function planFaseSimple(asig, hitos, clave, fechaGatillo){
+  const cfg = DUR_FASE[clave];
+  const lista = hitos.slice().sort((a,b) => a.orden - b.orden);
+  lista.forEach(h => {
+    h._ini = null; h._fin = null;
+    h.activo = true;
+    if(cfg.sinPlazo.indexOf(h.orden) >= 0){
+      if(h.fecha_real_inicio || h.fecha_real_fin){
+        h._ini = aFecha(h.fecha_real_inicio || h.fecha_real_fin);
+        h._fin = aFecha(h.fecha_real_fin || h.fecha_real_inicio);
+      }else{ h.activo = false; }
+    }
+  });
+  if(!fechaGatillo) return {hitos:lista, gatillo:null, fin:null, vacio:true};
+
+  let cursor = fechaGatillo;
+  lista.filter(h => cfg.dur[h.orden]).forEach(h => {
+    h._ini = proximoValido(cursor, asig, h);
+    h._fin = avanzar(h._ini, cfg.dur[h.orden], asig, h);
+    cursor = masDias(h._fin, 1);
+  });
+  const conFecha = lista.filter(h => h.activo && h._fin);
+  const fin = conFecha.length ? conFecha.reduce((m,h) => h._fin > m ? h._fin : m, conFecha[0]._fin) : null;
+  return {hitos:lista, gatillo:fechaGatillo, fin:fin, manual:false, clave:clave};
+}
+
+/* Fecha de gatillo más tardía para que la fase termine a más tardar en `limite` */
+function topeGatillo(asig, clave, limite){
+  const cfg = DUR_FASE[clave];
+  const ordenes = Object.keys(cfg.dur).map(Number).sort((a,b) => b - a);
+  let atras = limite, ini = limite;
+  ordenes.forEach(o => {
+    ini = retroceder(atras, cfg.dur[o], asig, {responsable:"Hackea"});
+    atras = previoValido(masDias(ini, -1), asig, {responsable:"Hackea"});
+  });
+  return ini;
+}
+
+/* Ruta completa: encadena las tres fases y calcula las fechas tope */
+function rutaCompleta(a){
+  const transito = a.dias_transito || 5;
+  const claves = {};
+  a.listaFases.forEach(c => { claves[claveFase(c)] = c; });
+
+  const r = {transito:transito, fases:{}, topes:{}, proyeccion:null};
+
+  ["1","2"].forEach(k => {
+    if(!claves[k]) return;
+    const campo = DUR_FASE[k].campo;
+    const fecha = a[campo] ? aFecha(a[campo]) : null;
+    r.fases[k] = planFaseSimple(a, a.fases[claves[k]], k, fecha);
+    r.fases[k].etiqueta = claves[k];
+  });
+
+  // Encadenado hacia adelante: el fin de una fase propone el gatillo de la siguiente
+  if(r.fases["1"] && r.fases["1"].fin && !a.fecha_envio_guiones){
+    const prop = avanzar(proximoValido(masDias(r.fases["1"].fin, 1), a, {responsable:"Hackea"}), transito, a, {responsable:"Hackea"});
+    r.propuestaGuiones = proximoValido(masDias(prop, 1), a, {responsable:"Hackea"});
+    if(r.fases["2"] && r.fases["2"].vacio)
+      r.fases["2"] = Object.assign(planFaseSimple(a, a.fases[claves["2"]], "2", r.propuestaGuiones), {propuesto:true, etiqueta:claves["2"]});
+  }
+  if(r.fases["2"] && r.fases["2"].fin && !a.fecha_envio_docente){
+    const prop = avanzar(proximoValido(masDias(r.fases["2"].fin, 1), a, {responsable:"Hackea"}), transito, a, {responsable:"Hackea"});
+    r.propuestaRecursos = proximoValido(masDias(prop, 1), a, {responsable:"Hackea"});
+  }
+
+  // Hacia atrás: si hay fecha de inicio de clases, las tres fechas tope
+  if(a.fecha_inicio_clases){
+    const p3 = planificar(a);
+    r.topes["3"] = p3.ultimoTren;
+    if(claves["2"]){
+      const limite2 = retroceder(previoValido(masDias(r.topes["3"], -1), a, {responsable:"Hackea"}), transito, a, {responsable:"Hackea"});
+      r.topes["2"] = topeGatillo(a, "2", previoValido(masDias(limite2, -1), a, {responsable:"Hackea"}));
+    }
+    if(claves["1"] && r.topes["2"]){
+      const limite1 = retroceder(previoValido(masDias(r.topes["2"], -1), a, {responsable:"Hackea"}), transito, a, {responsable:"Hackea"});
+      r.topes["1"] = topeGatillo(a, "1", previoValido(masDias(limite1, -1), a, {responsable:"Hackea"}));
+    }
+  }else{
+    // Sin fecha de inicio: se proyecta hasta dónde llega con los envíos cargados
+    const envioR = a.fecha_envio_docente ? aFecha(a.fecha_envio_docente) : r.propuestaRecursos;
+    if(envioR) r.proyeccion = proyectarCierre(a, envioR);
+  }
+  return r;
+}
+
+/* Desde el envío de recursos hacia adelante, cuándo quedaría cerrada la asignatura */
+function proyectarCierre(a, envioRecursos){
+  const dur = {1:2, 2:5, 3:3, 5:2, 6:10, 7:5, 8:5};
+  let cursor = envioRecursos, fin = envioRecursos;
+  [1,2,3,5,6,7,8].forEach(o => {
+    const h = {responsable: o === 6 ? "Educación Virtual" : "Hackea"};
+    const ini = proximoValido(cursor, a, h);
+    fin = avanzar(ini, dur[o], a, h);
+    cursor = (o === 1) ? ini : masDias(fin, 1);
+  });
+  return {cierre: fin, inicioPosible: masDias(fin, 7)};
+}
+
+function tarjetaRuta(a, ruta){
+  const filas = [
+    {k:"1", n:"Contenido al docente", fecha:a.fecha_envio_contenido, prop:null},
+    {k:"2", n:"Guiones al docente",   fecha:a.fecha_envio_guiones,   prop:ruta.propuestaGuiones},
+    {k:"3", n:"Recursos al docente",  fecha:a.fecha_envio_docente,   prop:ruta.propuestaRecursos}
+  ].filter(f => ruta.fases[f.k] || f.k === "3");
+  if(filas.length < 2) return "";
+
+  const hayTopes = ruta.topes["1"] || ruta.topes["2"] || ruta.topes["3"];
+  const cuerpo = filas.map(f => {
+    const tope = ruta.topes[f.k];
+    let estado = "—", color = "var(--muted)";
+    if(f.fecha && tope){
+      const d = diffDias(aFecha(f.fecha), tope);
+      if(d < 0){ estado = "enviado " + Math.abs(d) + " días tarde"; color = "var(--rojo)"; }
+      else { estado = "dentro de plazo, " + d + " días de margen"; color = "var(--verde)"; }
+    }else if(f.fecha){ estado = "enviado"; color = "var(--cuerpo)"; }
+    else if(tope){ estado = "pendiente"; color = "var(--ambar)"; }
+    else if(f.prop){ estado = "propuesta según la fase anterior"; color = "var(--muted)"; }
+    return `<tr>
+      <td>${f.n}</td>
+      <td>${f.fecha ? bonita(aFecha(f.fecha)) : (f.prop ? "<i>" + bonita(f.prop) + "</i>" : "—")}</td>
+      <td>${tope ? bonita(tope) : "—"}</td>
+      <td style="color:${color}">${estado}</td>
+    </tr>`;
+  }).join("");
+
+  const pie = ruta.proyeccion
+    ? `<div class="aviso" style="margin-top:12px">Sin fecha de inicio de clases todavía. Con estos envíos, la asignatura quedaría cerrada el <b>${bonita(ruta.proyeccion.cierre)}</b>, así que las clases no podrían partir antes del <b>${bonita(ruta.proyeccion.inicioPosible)}</b>.</div>`
+    : (hayTopes ? "" : `<div class="aviso" style="margin-top:12px">Cuando se cargue la fecha de inicio de clases, esta tabla muestra la fecha tope de cada envío.</div>`);
+
+  return `<div style="margin-top:16px">
+    <h3 style="font-size:14px;margin-bottom:6px">Ruta completa · tránsito de ${ruta.transito} días hábiles entre fases</h3>
+    <table><tr><th>Envío</th><th>Fecha cargada</th><th>Fecha tope</th><th>Estado</th></tr>${cuerpo}</table>
+    ${pie}</div>`;
+}
+
 /* ═══════════ VISTA UNIVERSIDAD ═══════════ */
 const GRUPOS = [
   {n:"Producción",           ordenes:[1]},
@@ -1180,6 +1356,13 @@ function situacion(p){
 }
 
 function fraseUniversidad(a, p, sit){
+  if(!a.fecha_inicio_clases){
+    const r = rutaCompleta(a);
+    return r.proyeccion
+      ? "Sin fecha de inicio de clases confirmada. Con la planificación actual, la asignatura quedaría cerrada el <b>" +
+        bonita(r.proyeccion.cierre) + "</b> y las clases no podrían partir antes del <b>" + bonita(r.proyeccion.inicioPosible) + "</b>."
+      : "Sin fecha de inicio de clases confirmada y sin fechas de envío cargadas.";
+  }
   if(sit.cerrado) return "Todas las etapas cerradas. Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
   const x = sit.pendiente;
   if(!x) return "Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
@@ -1203,7 +1386,7 @@ function pintarUniversidad(){
   const cont = document.getElementById("universidad");
   const datos = estado.asignaturas
     .filter(a => !filtro || a.programa === filtro)
-    .sort((a,b) => (a.programa + a.fecha_inicio_clases).localeCompare(b.programa + b.fecha_inicio_clases));
+    .sort((a,b) => (a.programa + (a.fecha_inicio_clases || "9999")).localeCompare(b.programa + (b.fecha_inicio_clases || "9999")));
   if(!datos.length){ cont.innerHTML = '<div class="card"><div class="vacio">Sin asignaturas para ese filtro.</div></div>'; return; }
 
   const ultimo = ultimoRegistro();
@@ -1226,7 +1409,8 @@ function pintarUniversidad(){
         const p = planificar(a);
         const sit = situacion(p);
         let chip = "espera", txt = "En Hackea";
-        if(sit.cerrado){ chip = "fin"; txt = "Cerrada"; }
+        if(!a.fecha_inicio_clases){ chip = "espera"; txt = "Inicio por confirmar"; }
+        else if(sit.cerrado){ chip = "fin"; txt = "Cerrada"; }
         else if(sit.tarde){ chip = "tarde"; txt = "Con atraso"; }
         else if(sit.pendiente && sit.pendiente.responsable.indexOf("Docente") >= 0){ chip = "espera"; txt = "Acción del docente"; }
         else if(sit.pendiente && sit.pendiente.responsable.indexOf("Educación") >= 0){ chip = "espera"; txt = "En QA de U. Mayor"; }
