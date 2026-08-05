@@ -187,6 +187,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
       <div class="desc">Dónde está cada asignatura hoy, quién debe actuar y si va dentro de lo planificado.</div>
       <div style="max-width:300px;margin-bottom:6px">
         <label>Programa</label>
+        <select id="fUniCiclo" onchange="pintarUniversidad()" style="margin-bottom:8px"><option value="">Todos los ciclos</option></select>
         <select id="fUni" onchange="pintarUniversidad()">
           <option value="">Todos los programas</option>
           <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
@@ -201,6 +202,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
       <h2>Estado de las asignaturas</h2>
       <div class="desc">La fecha de envío de los recursos al docente determina toda la carta. La holgura es lo que queda entre el término del montaje y el envío a QA.</div>
       <div class="grid g3" style="margin-bottom:14px">
+        <div><label>Ciclo</label>
+          <select id="fCiclo" onchange="pintarLista()"><option value="">Todos</option></select></div>
         <div><label>Programa</label>
           <select id="fPrograma" onchange="pintarLista()">
             <option value="">Todos</option><option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
@@ -230,6 +233,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
       <div class="desc">Cada barra muestra el tramo de trabajo de Hackea, la ventana de QA y el tramo final antes del inicio de clases.</div>
       <div style="max-width:280px;margin-bottom:14px">
         <label>Programa</label>
+        <select id="fConsCiclo" onchange="pintarConsolidado(); pintarCarga();" style="margin-bottom:8px"><option value="">Todos los ciclos</option></select>
         <select id="fCons" onchange="pintarConsolidado(); pintarCarga();">
           <option value="">Todos los programas</option>
           <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
@@ -275,14 +279,57 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 
   <section id="v-cfg" class="oculto">
     <div class="card">
-      <h2>Cómo se calculan las fechas</h2>
-      <div class="desc">Cuenta regresiva desde el inicio de clases, que no se mueve nunca.</div>
+      <h2>Los dos techos</h2>
+      <div class="desc">Manda siempre el que llegue antes.</div>
       <table>
-        <tr><td><b>Inicio de clases − 5 días hábiles</b></td><td>Fecha máxima del 100% / entrega al profesor</td></tr>
+        <tr><td><b>Inicio de clases</b></td><td>Fecha fija de cada asignatura. No se mueve nunca.</td></tr>
+        <tr><td><b>Término de contrato</b></td><td id="techoContrato">Todas montadas y aprobadas por Educación Virtual.</td></tr>
+        <tr><td colspan="2" style="background:var(--azul-suave);font-size:13px">Una asignatura que parte en 2027 se calcula desde el término de contrato, no desde su inicio. Por eso su fecha tope de envío puede caer un año antes de sus clases.</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Las tres fases</h2>
+      <div class="desc">Cada una arranca con un envío al docente, que es el gatillo de su carta Gantt. Entre el cierre de una y el envío de la siguiente hay 5 días hábiles de tránsito.</div>
+      <table>
+        <tr><th>Fase 1 · Desarrollo de contenido</th><th>Plazo</th><th>Responsable</th></tr>
+        <tr><td>Reunión inicial con docente y director</td><td>sin plazo</td><td>Hackea + UMayor</td></tr>
+        <tr><td>Desarrollo de contenido</td><td>sin plazo</td><td>Hackea</td></tr>
+        <tr><td><b>Envío del contenido al docente</b></td><td><b>gatillo</b></td><td>Hackea</td></tr>
+        <tr><td>Revisión y solicitud de ajustes</td><td>10 días hábiles</td><td>Docente</td></tr>
+        <tr><td>Reunión de revisión de ajustes</td><td>3 días</td><td>Hackea + Docente</td></tr>
+        <tr><td>Realización de ajustes</td><td>5 días hábiles</td><td>Hackea</td></tr>
+        <tr><td>Aviso de cierre e inicio de guionización</td><td>1 día</td><td>Hackea</td></tr>
+      </table>
+      <table style="margin-top:18px">
+        <tr><th>Fase 2 · Guionización</th><th>Plazo</th><th>Responsable</th></tr>
+        <tr><td>Elaboración de guiones</td><td>sin plazo</td><td>Hackea</td></tr>
+        <tr><td><b>Envío de guiones al docente</b></td><td><b>gatillo</b></td><td>Hackea</td></tr>
+        <tr><td>Revisión y solicitud de ajustes</td><td>5 días hábiles</td><td>Docente</td></tr>
+        <tr><td>Reunión de revisión de ajustes</td><td>3 días</td><td>Hackea + Docente</td></tr>
+        <tr><td>Realización de ajustes</td><td>5 días hábiles</td><td>Hackea</td></tr>
+        <tr><td>Aviso de paso a producción</td><td>1 día</td><td>Hackea</td></tr>
+      </table>
+      <table style="margin-top:18px">
+        <tr><th>Fase 3 · Producción de recursos</th><th>Plazo</th><th>Responsable</th></tr>
+        <tr><td><b>Envío de recursos al docente</b></td><td><b>gatillo</b> · 2 días</td><td>Hackea</td></tr>
+        <tr><td>Revisión de recursos por el docente</td><td>5 días hábiles</td><td>Docente</td></tr>
+        <tr><td>Reunión de revisión de recursos</td><td>3 días</td><td>Hackea + Docente</td></tr>
+        <tr><td>Montaje en Blackboard</td><td>2 días</td><td>Hackea</td></tr>
+        <tr><td>QA Educación Virtual</td><td>10 días hábiles</td><td>Educación Virtual</td></tr>
+        <tr><td>Ajustes post-QA</td><td>5 días hábiles</td><td>Hackea</td></tr>
+        <tr><td>Revisión en plataforma</td><td>5 días hábiles</td><td>Docente</td></tr>
+      </table>
+      <div class="aviso" style="margin-top:14px">La reunión inicial, el desarrollo de contenido y la elaboración de guiones no tienen plazo comprometido: aparecen en la carta recién cuando se registra su fecha real.</div>
+    </div>
+
+    <div class="card">
+      <h2>Cuenta regresiva de la fase 3</h2>
+      <table>
+        <tr><td><b>Techo − 5 días hábiles</b></td><td>Fecha máxima del 100% / entrega al profesor</td></tr>
         <tr><td><b>− 5 días hábiles</b></td><td>Retroalimentación de QA</td></tr>
         <tr><td><b>− 10 días hábiles</b></td><td>Envío a QA de Educación Virtual</td></tr>
-        <tr><td colspan="2" style="color:var(--muted);font-size:12.5px">Hacia adelante, la carta arranca el día en que Hackea envía los recursos al docente: revisión del docente 5 días hábiles, reunión 3, montaje 2.</td></tr>
-        <tr><td colspan="2" style="background:var(--azul-suave);font-size:13px"><b>El inicio de clases no se mueve.</b> Cuando algo no cabe, se comprimen los procesos previos. La semana del docente, la ventana de QA y la revisión final no son comprimibles.</td></tr>
+        <tr><td colspan="2" style="color:var(--muted);font-size:12.5px">Cuando algo no cabe se comprimen los procesos previos, nunca el techo. La semana del docente, la ventana de QA y la revisión final no son comprimibles.</td></tr>
       </table>
     </div>
     <div class="card">
@@ -820,7 +867,24 @@ function irA(t){
   pintarTodo();
 }
 
+function llenarCiclos(){
+  const ciclos = [];
+  estado.asignaturas.forEach(a => { const c = String(a.ciclo || "").trim(); if(c && ciclos.indexOf(c) < 0) ciclos.push(c); });
+  ciclos.sort();
+  ["fCiclo","fUniCiclo","fConsCiclo"].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const previo = el.value;
+    const todos = id === "fCiclo" ? "Todos" : "Todos los ciclos";
+    el.innerHTML = `<option value="">${todos}</option>` + ciclos.map(c => `<option value="${esc(c)}">Ciclo ${esc(c)}</option>`).join("");
+    if(previo) el.value = previo;
+  });
+}
+
+function valorFiltro(id){ const el = document.getElementById(id); return el ? el.value : ""; }
+
 function pintarTodo(){
+  llenarCiclos();
   const al = calcularAlertas();
   const total = al.plan.filter(x => x.nivel === "r").length + al.vencidas.length + estado.problemas.length;
   document.getElementById("contAlertas").textContent = total ? "(" + total + ")" : "";
@@ -845,6 +909,7 @@ function pintarTodo(){
 function pintarLista(){
   const fp = document.getElementById("fPrograma").value;
   const fe = document.getElementById("fEstado").value;
+  const fc = valorFiltro("fCiclo");
   const cont = document.getElementById("lista");
   if(!estado.asignaturas.length){
     cont.innerHTML = '<div class="vacio">No hay asignaturas cargadas. Revisa la pestaña de alertas.</div>';
@@ -853,7 +918,8 @@ function pintarLista(){
   const filas = estado.asignaturas.slice()
     .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => ({a, p: planificar(a)}))
-    .filter(x => (!fp || x.a.programa === fp) && (!fe || x.p.semaforo === fe));
+    .filter(x => (!fp || x.a.programa === fp) && (!fe || x.p.semaforo === fe)
+              && (!fc || String(x.a.ciclo).trim() === fc));
   if(!filas.length){ cont.innerHTML = '<div class="vacio">No hay asignaturas que cumplan el filtro.</div>'; return; }
 
   cont.innerHTML = filas.map(({a,p}) => {
@@ -870,6 +936,8 @@ function pintarLista(){
       <div class="nom">${esc(a.nombre)}
         <small>${esc(a.docente || "Sin docente asignado")}${a.etapa ? " · " + esc(a.etapa) : ""}</small></div>
       <span class="tag azul">${esc(a.programa)}</span>
+      <span class="tag">Ciclo ${esc(a.ciclo || "?")}</span>
+      <span class="tag">${esc(faseActual(a))}</span>
       ${p.manual ? '<span class="tag">Plan acordado</span>' : ""}
       ${(p.recortes && p.recortes.length) ? '<span class="tag" style="border-color:var(--rojo);color:var(--rojo)">Comprimido</span>' : ""}
       <span class="tag">Al docente ${bonita(p.partida)}</span>
@@ -893,6 +961,17 @@ function llenarSelector(){
     .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => `<option value="${a.id}">${esc(a.programa)} · ${esc(a.nombre)}</option>`).join("");
   if(previo && estado.asignaturas.some(a => a.id === previo)) s.value = previo;
+}
+
+/* En qué fase está hoy la asignatura: la primera que tenga etapas sin cerrar */
+function faseActual(a){
+  const claves = (a.listaFases || []).slice().sort();
+  for(const c of claves){
+    const hs = a.fases[c] || [];
+    const pendientes = hs.filter(h => !h.fecha_real_fin);
+    if(pendientes.length) return "Fase " + claveFase(c);
+  }
+  return "Cerrada";
 }
 
 function nombreFase(clave){
@@ -963,7 +1042,7 @@ function pintarDetalle(){
   cont.innerHTML = `
   <div class="card">
     <h2>${esc(a.nombre)}</h2>
-    <div class="desc">${esc(a.programa)} · ${esc(a.docente || "sin docente")} · ${a.unidades || "?"} unidades · ${a.horas_asincronas || "?"} horas asíncronas</div>
+    <div class="desc">${esc(a.programa)} · Ciclo ${esc(a.ciclo || "?")} · ${esc(faseActual(a))} · ${esc(a.docente || "sin docente")} · ${a.unidades || "?"} unidades · ${a.horas_asincronas || "?"} horas asíncronas</div>
     ${alerta}
     <div class="grid g3">
       ${tarjeta("Inicio de clases", bonita(p.inicioClases))}
@@ -1082,7 +1161,8 @@ function gantt(a, p){
 function asignaturasFiltradas(){
   const el = document.getElementById("fCons");
   const f = el ? el.value : "";
-  return estado.asignaturas.filter(a => !f || a.programa === f);
+  const fc = valorFiltro("fConsCiclo");
+  return estado.asignaturas.filter(a => (!f || a.programa === f) && (!fc || String(a.ciclo).trim() === fc));
 }
 
 function pintarConsolidado(){
@@ -1450,8 +1530,9 @@ function pintarUniversidad(){
   const el = document.getElementById("fUni");
   const filtro = el ? el.value : "";
   const cont = document.getElementById("universidad");
+  const fc = valorFiltro("fUniCiclo");
   const datos = estado.asignaturas
-    .filter(a => !filtro || a.programa === filtro)
+    .filter(a => (!filtro || a.programa === filtro) && (!fc || String(a.ciclo).trim() === fc))
     .sort((a,b) => (a.programa + (a.fecha_inicio_clases || "9999")).localeCompare(b.programa + (b.fecha_inicio_clases || "9999")));
   if(!datos.length){ cont.innerHTML = '<div class="card"><div class="vacio">Sin asignaturas para ese filtro.</div></div>'; return; }
 
@@ -1483,7 +1564,8 @@ function pintarUniversidad(){
         else { chip = "ok"; txt = "Al día, en Hackea"; }
         return `<div class="ubloque">
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-            <div style="font-weight:bold;color:var(--tinta);font-size:14.5px">${esc(a.nombre)}</div>
+            <div style="font-weight:bold;color:var(--tinta);font-size:14.5px">${esc(a.nombre)}
+              <span class="tag" style="margin-left:6px;font-weight:normal">Ciclo ${esc(a.ciclo || "?")}</span></div>
             <span class="uchip ${chip}">${txt}</span>
           </div>
           <div class="uprog">
@@ -1529,6 +1611,8 @@ function pintarAlertas(al){
 }
 
 function pintarFuente(){
+  const tc = document.getElementById("techoContrato");
+  if(tc && CONTRATO) tc.innerHTML = "<b>" + bonita(CONTRATO) + "</b> · todas montadas y aprobadas por Educación Virtual.";
   const e = document.getElementById("estadoFuente");
   e.innerHTML = HAY_SHEET
     ? `<div class="aviso">Los datos vienen de la planilla de Google Sheets, pestañas RUTA, HITOS y FERIADOS. Esta herramienta solo muestra: todo se edita en la planilla.</div>
