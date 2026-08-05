@@ -172,7 +172,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <button class="tab" data-t="det" onclick="irA('det')">Detalle</button>
     <button class="tab" data-t="cons" onclick="irA('cons')">Consolidado</button>
     <button class="tab" data-t="alertas" onclick="irA('alertas')">Alertas <span id="contAlertas"></span></button>
-    <button class="tab" data-t="cfg" onclick="irA('cfg')">Cómo se calcula</button>
+    <button class="tab oculto" id="tabCfg" data-t="cfg" onclick="irA('cfg')">Cómo se calcula</button>
     <div class="chip-vista">
       <span class="pill" id="pillActualizado">Cargando…</span>
       <button class="btn mini sec" onclick="recargar()">Actualizar</button>
@@ -263,6 +263,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <div class="card">
       <h2>Alertas de planificación</h2>
       <div class="desc">Lo que necesita una decisión.</div>
+      <div id="enlacePlanilla" style="margin-bottom:12px"></div>
       <div id="alertasPlan"></div>
     </div>
     <div class="card">
@@ -290,32 +291,32 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 
     <div class="card">
       <h2>Las tres fases</h2>
-      <div class="desc">Cada una arranca con un envío al docente, que es el gatillo de su carta Gantt. Entre el cierre de una y el envío de la siguiente hay 5 días hábiles de tránsito.</div>
+      <div class="desc">Cada una arranca con un envío al docente, que es el gatillo de su carta Gantt. Entre el cierre de una y el envío de la siguiente hay 5 días hábiles de tránsito. Todos los plazos se cuentan en días hábiles: nunca se cuentan fines de semana ni feriados.</div>
       <table>
         <tr><th>Fase 1 · Desarrollo de contenido</th><th>Plazo</th><th>Responsable</th></tr>
         <tr><td>Reunión inicial con docente y director</td><td>sin plazo</td><td>Hackea + UMayor</td></tr>
         <tr><td>Desarrollo de contenido</td><td>sin plazo</td><td>Hackea</td></tr>
         <tr><td><b>Envío del contenido al docente</b></td><td><b>gatillo</b></td><td>Hackea</td></tr>
         <tr><td>Revisión y solicitud de ajustes</td><td>10 días hábiles</td><td>Docente</td></tr>
-        <tr><td>Reunión de revisión de ajustes</td><td>3 días</td><td>Hackea + Docente</td></tr>
+        <tr><td>Reunión de revisión de ajustes</td><td>3 días hábiles</td><td>Hackea + Docente</td></tr>
         <tr><td>Realización de ajustes</td><td>5 días hábiles</td><td>Hackea</td></tr>
-        <tr><td>Aviso de cierre e inicio de guionización</td><td>1 día</td><td>Hackea</td></tr>
+        <tr><td>Aviso de cierre e inicio de guionización</td><td>1 día hábil</td><td>Hackea</td></tr>
       </table>
       <table style="margin-top:18px">
         <tr><th>Fase 2 · Guionización</th><th>Plazo</th><th>Responsable</th></tr>
         <tr><td>Elaboración de guiones</td><td>sin plazo</td><td>Hackea</td></tr>
         <tr><td><b>Envío de guiones al docente</b></td><td><b>gatillo</b></td><td>Hackea</td></tr>
         <tr><td>Revisión y solicitud de ajustes</td><td>5 días hábiles</td><td>Docente</td></tr>
-        <tr><td>Reunión de revisión de ajustes</td><td>3 días</td><td>Hackea + Docente</td></tr>
+        <tr><td>Reunión de revisión de ajustes</td><td>3 días hábiles</td><td>Hackea + Docente</td></tr>
         <tr><td>Realización de ajustes</td><td>5 días hábiles</td><td>Hackea</td></tr>
-        <tr><td>Aviso de paso a producción</td><td>1 día</td><td>Hackea</td></tr>
+        <tr><td>Aviso de paso a producción</td><td>1 día hábil</td><td>Hackea</td></tr>
       </table>
       <table style="margin-top:18px">
         <tr><th>Fase 3 · Producción de recursos</th><th>Plazo</th><th>Responsable</th></tr>
-        <tr><td><b>Envío de recursos al docente</b></td><td><b>gatillo</b> · 2 días</td><td>Hackea</td></tr>
+        <tr><td><b>Envío de recursos al docente</b></td><td><b>gatillo</b> · 2 días hábiles</td><td>Hackea</td></tr>
         <tr><td>Revisión de recursos por el docente</td><td>5 días hábiles</td><td>Docente</td></tr>
-        <tr><td>Reunión de revisión de recursos</td><td>3 días</td><td>Hackea + Docente</td></tr>
-        <tr><td>Montaje en Blackboard</td><td>2 días</td><td>Hackea</td></tr>
+        <tr><td>Reunión de revisión de recursos</td><td>3 días hábiles</td><td>Hackea + Docente</td></tr>
+        <tr><td>Montaje en Blackboard</td><td>2 días hábiles</td><td>Hackea</td></tr>
         <tr><td>QA Educación Virtual</td><td>10 días hábiles</td><td>Educación Virtual</td></tr>
         <tr><td>Ajustes post-QA</td><td>5 días hábiles</td><td>Hackea</td></tr>
         <tr><td>Revisión en plataforma</td><td>5 días hábiles</td><td>Docente</td></tr>
@@ -337,10 +338,10 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
       <div class="desc">Se usan cuando hay tiempo. Si no alcanza, la herramienta los recorta sola en el orden de la última columna.</div>
       <table>
         <tr><th>Etapa</th><th>Con holgura</th><th>Mínimo</th><th>Orden de recorte</th></tr>
-        <tr><td>Envío de recursos al docente</td><td>2 días</td><td>1 día</td><td>2°</td></tr>
+        <tr><td>Envío de recursos al docente</td><td>2 días hábiles</td><td>1</td><td>2°</td></tr>
         <tr><td>Revisión del docente</td><td>5 días hábiles</td><td>5</td><td>no se recorta</td></tr>
-        <tr><td>Reunión con el docente</td><td>3 días</td><td>3</td><td>no se recorta</td></tr>
-        <tr><td>Montaje en Blackboard</td><td>2 días</td><td>2</td><td>no se recorta</td></tr>
+        <tr><td>Reunión con el docente</td><td>3 días hábiles</td><td>3</td><td>no se recorta</td></tr>
+        <tr><td>Montaje en Blackboard</td><td>2 días hábiles</td><td>2</td><td>no se recorta</td></tr>
         <tr><td>QA Educación Virtual</td><td>10 días hábiles</td><td>10</td><td>no se recorta</td></tr>
         <tr><td>Ajustes post-QA</td><td>5 días hábiles</td><td>2</td><td>1°</td></tr>
         <tr><td>Revisión en plataforma</td><td>5 días hábiles</td><td>5</td><td>no se recorta</td></tr>
@@ -1585,6 +1586,8 @@ function pintarUniversidad(){
 /* ═══════════ ALERTAS Y FUENTE ═══════════ */
 function pintarAlertas(al){
   pintarContrato();
+  const ep = document.getElementById("enlacePlanilla");
+  if(ep && URL_SHEET) ep.innerHTML = `<a class="btn sec mini" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>`;
   const p = document.getElementById("alertasPlan");
   p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
       <span class="sem ${x.nivel}"></span>
@@ -1644,7 +1647,13 @@ window.addEventListener("resize", () => {
   tResize = setTimeout(() => { if(vistaActual === "det") pintarDetalle(); }, 250);
 });
 
+/* La metodología queda fuera de la navegación: es material interno de Hackea.
+   Se abre agregando ?metodo a la dirección. No es una protección, solo evita
+   ponerla delante de quien no la necesita. */
+const VER_METODO = location.search.indexOf("metodo") >= 0 || location.hash.indexOf("metodo") >= 0;
+
 (async function init(){
+  if(VER_METODO) document.getElementById("tabCfg").classList.remove("oculto");
   await cargarDatos();
   llenarSelector();
   pintarTodo();
