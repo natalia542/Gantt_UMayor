@@ -263,7 +263,6 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <div class="card">
       <h2>Alertas de planificación</h2>
       <div class="desc">Lo que necesita una decisión.</div>
-      <div id="enlacePlanilla" style="margin-bottom:12px"></div>
       <div id="alertasPlan"></div>
     </div>
     <div class="card">
@@ -1055,7 +1054,6 @@ function pintarDetalle(){
     ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
     ${tarjetaRuta(a, ruta)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-      ${URL_SHEET ? `<a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>` : ""}
       <button class="btn sec" onclick="window.print()">Imprimir / PDF</button>
     </div>
   </div>
@@ -1586,8 +1584,6 @@ function pintarUniversidad(){
 /* ═══════════ ALERTAS Y FUENTE ═══════════ */
 function pintarAlertas(al){
   pintarContrato();
-  const ep = document.getElementById("enlacePlanilla");
-  if(ep && URL_SHEET) ep.innerHTML = `<a class="btn sec mini" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a>`;
   const p = document.getElementById("alertasPlan");
   p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
       <span class="sem ${x.nivel}"></span>
@@ -1620,7 +1616,7 @@ function pintarFuente(){
   e.innerHTML = HAY_SHEET
     ? `<div class="aviso">Los datos vienen de la planilla de Google Sheets, pestañas RUTA, HITOS y FERIADOS. Esta herramienta solo muestra: todo se edita en la planilla.</div>
        <div style="font-size:13.5px">Última lectura: ${estado.leidoEn || "sin datos"}. Google guarda una copia en caché unos minutos, así que un cambio recién guardado puede tardar en aparecer.</div>
-       <div style="margin-top:12px"><a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a></div>`
+       ${VER_METODO ? `<div style="margin-top:12px"><a class="btn sec" href="${URL_SHEET}" target="_blank" rel="noopener">Abrir la planilla</a></div>` : ""}`
     : `<div class="aviso alerta">Falta pegar el ID de la planilla al inicio del archivo index.html.</div>`;
 }
 
