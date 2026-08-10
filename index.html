@@ -200,7 +200,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
   <section id="v-asig" class="oculto">
     <div class="card">
       <h2>Estado de las asignaturas</h2>
-      <div class="desc">La fecha de envío de los recursos al docente determina toda la carta. La holgura es lo que queda entre el término del montaje y el envío a QA.</div>
+      <div class="desc">La fecha de envío de los recursos al docente determina toda la carta. El margen es lo que queda entre el cierre del proceso y la fecha límite de cada asignatura.</div>
       <div class="grid g3" style="margin-bottom:14px">
         <div><label>Ciclo</label>
           <select id="fCiclo" onchange="pintarLista()"><option value="">Todos</option></select></div>
@@ -451,6 +451,11 @@ function avanzar(inicio, n, asig, hito){
    está comprometida con Educación Virtual, e independiente del calendario
    que use cada asignatura. */
 function esHabilSimple(d){ const w = d.getDay(); return w !== 0 && w !== 6; }
+function avanzarHabil(d, n){
+  let x = new Date(d.getTime()), c = 0, g = 0;
+  while(c < n && g < 900){ x = masDias(x,1); if(esHabilSimple(x)) c++; g++; }
+  return x;
+}
 function retrocederHabil(fin, n){
   let x = new Date(fin.getTime()), contados = 0, g = 0;
   while(!esHabilSimple(x)) x = masDias(x,-1);
@@ -579,17 +584,39 @@ function armarPlan(asig, inicioClases, recortes){
   hitos.filter(h => h.orden <= 5 && !h.activo).forEach(h => { h._ini = null; h._fin = null; });
 
   const finCabeza = cabeza.length ? cabeza[cabeza.length-1]._fin : partida;
-  const holgura = diffDias(finCabeza, envioQA);
+
+  /* La cola no espera hasta la última fecha posible: arranca apenas termina
+     el montaje. Así el recurso no queda meses guardado y el margen queda al
+     final, antes del techo, donde sirve de amortiguador. */
+  const techo = (inicioClases && CONTRATO)
+      ? (inicioClases < CONTRATO ? inicioClases : CONTRATO)
+      : (inicioClases || CONTRATO);
+  let holgura, envioQAefec = envioQA, retroQAefec = retroQA, fecha100efec = fecha100, finProceso;
+
+  const envioTemprano = proximoValido(masDias(finCabeza, 1), asig, {responsable:"Hackea"});
+  if(envioTemprano <= envioQA){
+    envioQAefec  = envioTemprano;
+    retroQAefec  = avanzarHabil(envioQAefec, qa);
+    fecha100efec = avanzarHabil(retroQAefec, ajustes);
+    finProceso   = avanzarHabil(fecha100efec, plataforma);
+    holgura      = diffDias(finProceso, techo);
+    set(6, envioQAefec, retroQAefec);
+    set(7, retroQAefec, fecha100efec);
+    set(8, fecha100efec, finProceso);
+  }else{
+    finProceso = inicioClases || fecha100;
+    holgura = diffDias(finCabeza, envioQA);
+  }
 
   let semaforo = "v";
   if(holgura < 0) semaforo = "r"; else if(holgura <= 4) semaforo = "a";
   if(propuesta && holgura >= 0) semaforo = "g";
   if(ultimoTren < hoy()) semaforo = "r";
 
-  return { inicioClases, fecha100, retroQA, envioQA, hitos, holgura, semaforo, partida,
-           finCabeza, finProceso: inicioClases, ultimoTren, propuesta, manual:false,
-           colchon, diasQAplan: qa, ajustes, limitadoPorContrato,
-           recortes: (recortes || []).slice() };
+  return { inicioClases, fecha100: fecha100efec, retroQA: retroQAefec, envioQA: envioQAefec,
+           hitos, holgura, semaforo, partida, finCabeza, finProceso, ultimoTren, propuesta,
+           manual:false, colchon, diasQAplan: qa, ajustes, limitadoPorContrato, techo,
+           topeQA: envioQA, recortes: (recortes || []).slice() };
 }
 
 function desviacion(h){
@@ -849,7 +876,7 @@ function calcularAlertas(){
       if(p.holgura < 0) plan.push({a, nivel:"r", msg:"No alcanza: enviando el " + bonita(p.partida) + " el montaje termina " + Math.abs(p.holgura) + " días después del envío a QA. La fecha tope de envío era el " + bonita(p.ultimoTren) + "."});
       else if(p.propuesta) plan.push({a, nivel:"g", msg:"Sin fecha de envío al docente. Tope: " + bonita(p.ultimoTren) + "."});
       else if(p.recortes && p.recortes.length) plan.push({a, nivel:"a", msg:"Plan comprimido: " + p.recortes.map(o => ELASTICO[o].nota.toLowerCase()).join(" y ") + " al mínimo."});
-      else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de holgura antes del envío a QA."});
+      else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de margen entre el cierre del proceso y la fecha límite."});
     }
     p.hitos.filter(x => x.activo && x._fin && x._fin < h && !x.fecha_real_fin).forEach(x => {
       vencidas.push({a, hito:x, dias: diffDias(x._fin, h)});
@@ -930,7 +957,7 @@ function pintarLista(){
       else { texto = p.colchon + " días antes de clases"; color = p.colchon <= 9 ? "var(--ambar)" : "var(--verde)"; }
     }else if(p.holgura < 0){ texto = Math.abs(p.holgura) + " días de atraso sobre el envío a QA"; color = "var(--rojo)"; }
     else if(p.propuesta){ texto = "enviar a más tardar el " + bonita(p.ultimoTren); color = "var(--muted)"; }
-    else { texto = p.holgura + " días de holgura"; color = p.holgura <= 4 ? "var(--ambar)" : "var(--verde)"; }
+    else { texto = p.holgura + " días de margen al cierre"; color = p.holgura <= 4 ? "var(--ambar)" : "var(--verde)"; }
     return `<div class="fila">
       <span class="sem ${p.semaforo}"></span>
       <div class="nom">${esc(a.nombre)}
@@ -1006,7 +1033,7 @@ function pintarDetalle(){
   }else if(p.propuesta){
     alerta = `<div class="aviso">Todavía sin fecha de envío al docente en la planilla. Para llegar al envío a QA del ${bonita(p.envioQA)}, los recursos tienen que salir <b>a más tardar el ${bonita(p.ultimoTren)}</b>.</div>`;
   }else{
-    alerta = `<div class="aviso">Recursos al docente el <b>${bonita(p.partida)}</b>. El tope era el ${bonita(p.ultimoTren)}, así que quedan ${p.holgura} días de holgura antes del envío a QA del ${bonita(p.envioQA)}.</div>`;
+    alerta = `<div class="aviso">Recursos al docente el <b>${bonita(p.partida)}</b>. Entra a QA el ${bonita(p.envioQA)} y el proceso cierra el <b>${bonita(p.finProceso)}</b>, con ${p.holgura} días de margen antes del ${p.limitadoPorContrato ? "término de contrato" : "inicio de clases"} del ${bonita(p.techo)}.</div>`;
     if(p.recortes && p.recortes.length)
       alerta += `<div class="aviso alerta">No alcanzaba con los plazos holgados, así que se recortaron: <b>${p.recortes.map(o => ELASTICO[o].nota + " a " + ELASTICO[o].minimo + " día(s)").join(" · ")}</b>.</div>`;
   }
