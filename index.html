@@ -1535,21 +1535,29 @@ function fraseUniversidad(a, p, sit){
         bonita(r.proyeccion.cierre) + "</b> y las clases no podrían partir antes del <b>" + bonita(r.proyeccion.inicioPosible) + "</b>."
       : "Sin fecha de inicio de clases confirmada y sin fechas de envío cargadas.";
   }
-  if(sit.cerrado) return "Todas las etapas cerradas. Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
+  const clases = "Las clases parten el <b>" + bonita(p.inicioClases) + "</b>.";
+  if(sit.cerrado) return "Todas las etapas están cerradas. " + clases;
+
   const x = sit.pendiente;
-  if(!x) return "Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
+  if(!x) return clases;
+
   let quien = "Hackea";
   if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
   else if(x.responsable.indexOf("Hackea") >= 0 && x.responsable.indexOf("Docente") >= 0) quien = "Hackea junto a " + (a.docente || "el docente");
   else if(x.responsable.indexOf("Docente") >= 0) quien = a.docente || "El docente";
-  let f = quien + " tiene a cargo <b>" + esc(x.nombre.toLowerCase()) + "</b>, con plazo hasta el <b>" + bonita(x._fin) + "</b>. ";
-  if(sit.tarde) f += "Lleva " + sit.retraso + " días de atraso sobre lo planificado. ";
-  else if(x.fecha_real_inicio) f += "Va dentro de lo planificado. ";
-  else if(x._ini > hoy()) f += "Comienza el " + bonita(x._ini) + ". ";
-  else f += "Va dentro de lo planificado. ";
-  if(sit.arrastre) f += "Acumula " + sit.arrastre + " días de desvío en etapas ya cerradas. ";
-  f += "Inicio de clases: <b>" + bonita(p.inicioClases) + "</b>.";
-  return f;
+
+  const etapa = "<b>" + esc(x.nombre.toLowerCase()) + "</b>";
+  let f;
+  if(sit.tarde){
+    f = quien + " debía cerrar " + etapa + " el " + bonita(x._fin) + " y lleva " + sit.retraso + " días de atraso. ";
+  }else if(x._ini > hoy()){
+    const mismo = aTexto(x._ini) === aTexto(x._fin);
+    f = quien + " toma " + etapa + (mismo ? " el " + bonita(x._ini) : " entre el " + bonita(x._ini) + " y el " + bonita(x._fin)) + ". ";
+  }else{
+    f = quien + " está en " + etapa + ", con plazo hasta el " + bonita(x._fin) + ", dentro de lo planificado. ";
+  }
+  if(sit.arrastre) f += "La asignatura acumula " + sit.arrastre + " días de desvío en etapas ya cerradas. ";
+  return f + clases;
 }
 
 function pintarUniversidad(){
