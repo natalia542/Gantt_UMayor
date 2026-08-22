@@ -131,6 +131,14 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .uchip.espera{background:#FFF1D6;color:#7A4E00}
 .uchip.tarde{background:#FBE3E0;color:#98281c}
 .uchip.fin{background:var(--superficie);color:var(--muted)}
+.utabla td{padding:11px 8px;vertical-align:top}
+.utabla th{padding:6px 8px 9px}
+.utabla .usec{color:var(--muted)}
+.upunto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:9px;flex:none}
+.upunto.v{background:var(--verde)} .upunto.a{background:var(--ambar)}
+.upunto.r{background:var(--rojo)} .upunto.cerr{background:var(--borde)}
+.unota{font-size:12px;color:var(--muted);margin:3px 0 0 18px;max-width:520px}
+.uleyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
 .ubloque{border-top:1px solid var(--borde);padding:16px 0}
 .ubloque:first-child{border-top:none}
 .ufrase{font-size:13.5px;color:var(--cuerpo);margin-top:2px}
@@ -386,6 +394,19 @@ const FERIADOS_DEFECTO = [
   "2027-05-21","2027-06-21","2027-06-28"
 ];
 
+/* Marca de avance por asignatura: evita registrar hito por hito.
+   Todo lo anterior a la etapa marcada se considera hecho en fecha. */
+const ALCANZADA = {
+  "sin iniciar": 0,
+  "recursos enviados al docente": 1,
+  "docente revisó": 2,
+  "reunión hecha": 3,
+  "montado en blackboard": 5,
+  "qa recibido": 6,
+  "ajustes post-qa hechos": 7,
+  "cerrada": 8
+};
+
 const ELASTICO = {
   1: {deseado:2, minimo:1, nota:"Envío al docente"},
   2: {deseado:5, minimo:5, nota:"Revisión del docente"},
@@ -619,6 +640,16 @@ function armarPlan(asig, inicioClases, recortes){
            topeQA: envioQA, recortes: (recortes || []).slice() };
 }
 
+function esParcial(h){ return h.estado === "parcial"; }
+/* Un hito está cerrado si tiene fecha real registrada, o si la marca de
+   avance de la asignatura ya lo dejó atrás. */
+function hitoCerrado(h, a){
+  if(esParcial(h)) return false;
+  if(h.fecha_real_fin) return true;
+  if(a && a.avanceHasta !== undefined && h.orden <= a.avanceHasta) return true;
+  return false;
+}
+
 function desviacion(h){
   if(!h.fecha_real_fin || !h._fin) return null;
   return diffDias(h._fin, aFecha(h.fecha_real_fin));
@@ -758,6 +789,9 @@ async function cargarDatos(){
       dias_transito: parseInt(f.dias_transito, 10) || 5,
       plan_manual: modo === "acordado", etapa: f.etapa || "", comentario: f.comentario || "",
       bloqueos: leerBloqueos(f.bloqueos_docente),
+      etapa_alcanzada: (f.etapa_alcanzada || "").trim(),
+      inicio_original: (function(){ const x = leerFecha(f.inicio_original); return (x && x !== "__ERROR__") ? x : null; })(),
+      motivo_cambio: f.motivo_cambio || "",
       modo_calendario: "habiles", dias_revision_plataforma: 5, dias_ajustes_qa: 5, dias_qa: 10,
       dias_colchon: 8, elastico: true, fecha_qa_comprometida: null,
       fases: {}, hitos: []
@@ -792,7 +826,8 @@ async function cargarDatos(){
       fecha_plan_fin: (pf && pf !== "__ERROR__") ? pf : null,
       fecha_real_inicio: (ri && ri !== "__ERROR__") ? ri : null,
       fecha_real_fin: (rf && rf !== "__ERROR__") ? rf : null,
-      atribuido_a: h.atribuido_a || "", nota: h.nota || ""
+      atribuido_a: h.atribuido_a || "", nota: h.nota || "",
+      estado: (h.estado || "").toLowerCase(), causa: h.causa || ""
     };
     (a.fases[fase] = a.fases[fase] || []).push(hito);
   });
@@ -830,6 +865,13 @@ async function cargarDatos(){
   agrupados.forEach(x => {
     const v = vistos[x.donde + "|" + x.msg].veces;
     if(v > 1){ x.fila = x.fila + " y " + (v-1) + " fila(s) más"; }
+  });
+
+  // La marca de avance completa lo que no se registró hito por hito
+  asignaturas.forEach(a => {
+    const tope = ALCANZADA[(a.etapa_alcanzada || "").toLowerCase()];
+    if(tope === undefined) return;
+    a.avanceHasta = tope;
   });
 
   estado.asignaturas = asignaturas;
@@ -878,9 +920,12 @@ function calcularAlertas(){
       else if(p.recortes && p.recortes.length) plan.push({a, nivel:"a", msg:"Plan comprimido: " + p.recortes.map(o => ELASTICO[o].nota.toLowerCase()).join(" y ") + " al mínimo."});
       else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de margen entre el cierre del proceso y la fecha límite."});
     }
-    p.hitos.filter(x => x.activo && x._fin && x._fin < h && !x.fecha_real_fin).forEach(x => {
-      vencidas.push({a, hito:x, dias: diffDias(x._fin, h)});
-    });
+    // Una asignatura genera una sola alerta de vencimiento: la más antigua
+    const atrasadas = p.hitos.filter(x => x.activo && x._fin && x._fin < h && !hitoCerrado(x, a));
+    if(atrasadas.length){
+      const x = atrasadas[0];
+      vencidas.push({a, hito:x, dias: diffDias(x._fin, h), cuantas: atrasadas.length});
+    }
   });
   vencidas.sort((x,y) => y.dias - x.dias);
   return {plan, vencidas};
@@ -965,6 +1010,7 @@ function pintarLista(){
       <span class="tag azul">${esc(a.programa)}</span>
       <span class="tag">Ciclo ${esc(a.ciclo || "?")}</span>
       <span class="tag">${esc(faseActual(a))}</span>
+      ${a.etapa_alcanzada ? `<span class="tag">${esc(a.etapa_alcanzada)}</span>` : ""}
       ${p.manual ? '<span class="tag">Plan acordado</span>' : ""}
       ${(p.recortes && p.recortes.length) ? '<span class="tag" style="border-color:var(--rojo);color:var(--rojo)">Comprimido</span>' : ""}
       <span class="tag">Al docente ${bonita(p.partida)}</span>
@@ -995,7 +1041,7 @@ function faseActual(a){
   const claves = (a.listaFases || []).slice().sort();
   for(const c of claves){
     const hs = a.fases[c] || [];
-    const pendientes = hs.filter(h => !h.fecha_real_fin);
+    const pendientes = hs.filter(h => !hitoCerrado(h, a));
     if(pendientes.length) return "Fase " + claveFase(c);
   }
   return "Cerrada";
@@ -1494,13 +1540,13 @@ function ultimoRegistro(){
   return max;
 }
 
-function situacion(p){
+function situacion(p, a){
   const h = hoy();
   const activos = p.hitos.filter(x => x.activo && x._ini);
   const grupos = GRUPOS.map(g => {
     const hs = activos.filter(x => g.ordenes.indexOf(x.orden) >= 0);
     if(!hs.length) return {n:g.n, estado:"na", hs:[]};
-    const cerrados = hs.filter(x => x.fecha_real_fin).length;
+    const cerrados = hs.filter(x => hitoCerrado(x, a)).length;
     const fin = hs.reduce((m,x) => x._fin > m ? x._fin : m, hs[0]._fin);
     const ini = hs.reduce((m,x) => x._ini < m ? x._ini : m, hs[0]._ini);
     let est = "pendiente";
@@ -1514,7 +1560,7 @@ function situacion(p){
   const cerrado = grupos.filter(g => g.hs.length).every(g => g.estado === "hecho");
 
   let pendiente = null;
-  if(actual) pendiente = actual.hs.filter(x => !x.fecha_real_fin)[0] || actual.hs[actual.hs.length-1];
+  if(actual) pendiente = actual.hs.filter(x => !hitoCerrado(x, a))[0] || actual.hs[actual.hs.length-1];
 
   let retraso = 0, tarde = false;
   if(pendiente && !pendiente.fecha_real_fin && pendiente._fin < h){
@@ -1561,10 +1607,9 @@ function fraseUniversidad(a, p, sit){
 }
 
 function pintarUniversidad(){
-  const el = document.getElementById("fUni");
-  const filtro = el ? el.value : "";
-  const cont = document.getElementById("universidad");
+  const filtro = valorFiltro("fUni");
   const fc = valorFiltro("fUniCiclo");
+  const cont = document.getElementById("universidad");
   const datos = estado.asignaturas
     .filter(a => (!filtro || a.programa === filtro) && (!fc || String(a.ciclo).trim() === fc))
     .sort((a,b) => (a.programa + (a.fecha_inicio_clases || "9999")).localeCompare(b.programa + (b.fecha_inicio_clases || "9999")));
@@ -1572,46 +1617,71 @@ function pintarUniversidad(){
 
   const ultimo = ultimoRegistro();
   const dias = ultimo ? diffDias(aFecha(ultimo), hoy()) : null;
-  const aviso = ultimo
-    ? (dias > 3
-        ? '<div class="aviso alerta">Último avance registrado el ' + bonita(aFecha(ultimo)) + ', hace ' + dias + ' días. Puede haber movimientos posteriores todavía no cargados.</div>'
-        : '<div class="aviso">Último avance registrado el ' + bonita(aFecha(ultimo)) + '.</div>')
-    : '<div class="aviso alerta">Todavía no hay avances reales registrados.</div>';
-
   const programas = [];
   datos.forEach(a => { if(programas.indexOf(a.programa) < 0) programas.push(a.programa); });
 
-  cont.innerHTML = aviso + programas.map(prog => {
+  cont.innerHTML = programas.map(prog => {
     const grupo = datos.filter(a => a.programa === prog);
+    const hoyF = hoy();
+    grupo.sort((a,b) => {
+      const ua = (a.fecha_inicio_clases && aFecha(a.fecha_inicio_clases) <= hoyF) ? 0 : 1;
+      const ub = (b.fecha_inicio_clases && aFecha(b.fecha_inicio_clases) <= hoyF) ? 0 : 1;
+      if(ua !== ub) return ua - ub;
+      return (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999");
+    });
+    let notasClase = false;
+    const filas = grupo.map(a => {
+      const p = planificar(a);
+      const sit = situacion(p, a);
+      const x = sit.pendiente;
+
+      const enClases = p.inicioClases && p.inicioClases <= hoyF && !sit.cerrado;
+      let punto = "v", hasta = "—", quien = "—", etapa = "—";
+      if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
+      else if(x){
+        etapa = x.nombre;
+        hasta = bonita(x._fin);
+        if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
+        else if(x.responsable.indexOf("Docente") >= 0) quien = "<b>" + esc(a.docente || "El docente") + "</b>";
+        else quien = "Hackea";
+        if(sit.tarde){ punto = "r"; hasta = bonita(x._fin) + ' · <b style="color:var(--rojo)">' + sit.retraso + " días de atraso</b>"; }
+        else if(x.responsable.indexOf("Hackea") < 0) punto = "a";
+        if(esParcial(x)) hasta += ' · <span style="color:var(--ambar)">entrega parcial</span>';
+      }
+
+      // Nota visible solo cuando aporta: atraso, entrega parcial o replanificación
+      const notas = [];
+      if(a.inicio_original && a.motivo_cambio)
+        notas.push("Fecha de inicio replanificada desde el " + bonita(aFecha(a.inicio_original)) + ". " + esc(a.motivo_cambio));
+      p.hitos.filter(h => h.activo && h.nota && (esParcial(h) || (desviacion(h) || 0) > 0))
+             .forEach(h => notas.push(esc(h.nota)));
+
+      if(enClases) notasClase = true;
+      return `<tr class="ufila"${enClases ? ' style="background:#FFF8E6"' : ""}>
+        <td><span class="upunto ${punto}"></span>${esc(a.nombre)}
+          ${enClases ? '<span class="tag" style="margin-left:8px;border-color:var(--ambar);color:#7A4E00">Clases en curso</span>' : ""}
+          ${notas.length ? `<div class="unota">${notas.join(" · ")}</div>` : ""}</td>
+        <td class="usec">${esc(etapa)}</td>
+        <td>${quien}</td>
+        <td>${hasta}</td>
+        <td class="usec">${p.inicioClases ? bonita(p.inicioClases) : "por confirmar"}</td>
+        <td style="text-align:right"><button class="btn mini sec" onclick="verDetalle('${a.id}')">Ver</button></td>
+      </tr>`;
+    }).join("");
+
     return `<div class="card">
       <h2>${esc(prog)}</h2>
-      <div class="desc">${grupo.length} asignatura(s) en producción</div>
-      ${grupo.map(a => {
-        const p = planificar(a);
-        const sit = situacion(p);
-        let chip = "espera", txt = "En Hackea";
-        if(!a.fecha_inicio_clases){ chip = "espera"; txt = "Inicio por confirmar"; }
-        else if(sit.cerrado){ chip = "fin"; txt = "Cerrada"; }
-        else if(sit.tarde){ chip = "tarde"; txt = "Con atraso"; }
-        else if(sit.pendiente && sit.pendiente.responsable.indexOf("Docente") >= 0){ chip = "espera"; txt = "Acción del docente"; }
-        else if(sit.pendiente && sit.pendiente.responsable.indexOf("Educación") >= 0){ chip = "espera"; txt = "En QA de U. Mayor"; }
-        else { chip = "ok"; txt = "Al día, en Hackea"; }
-        return `<div class="ubloque">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
-            <div style="font-weight:bold;color:var(--tinta);font-size:14.5px">${esc(a.nombre)}
-              <span class="tag" style="margin-left:6px;font-weight:normal">Ciclo ${esc(a.ciclo || "?")}</span></div>
-            <span class="uchip ${chip}">${txt}</span>
-          </div>
-          <div class="uprog">
-            ${sit.grupos.map(g => {
-              let cls = g.estado === "hecho" ? "hecho" : (g.estado === "curso" ? "curso" : "");
-              if(g.estado === "curso" && sit.tarde) cls += " tarde";
-              return `<div class="useg ${cls}">${g.n}</div>`;
-            }).join("")}
-          </div>
-          <div class="ufrase">${fraseUniversidad(a, p, sit)}</div>
-        </div>`;
-      }).join("")}
+      <div class="desc">${grupo.length} asignatura(s)${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
+      <div class="scroll"><table class="utabla">
+        <tr><th>Asignatura</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
+        ${filas}
+      </table></div>
+      <div class="uleyenda">
+        <span><i class="upunto v"></i>Al día, en Hackea</span>
+        <span><i class="upunto a"></i>Esperando al docente o a Educación Virtual</span>
+        <span><i class="upunto r"></i>Con atraso</span>
+        <span><i class="upunto cerr"></i>Cerrada</span>
+      </div>
     </div>`;
   }).join("");
 }
@@ -1632,7 +1702,7 @@ function pintarAlertas(al){
       <span class="sem r"></span>
       <span class="tag azul">${esc(x.a.programa)}</span>
       <div class="nom">${esc(x.a.nombre)}
-        <small>${esc(x.hito.nombre)} · terminaba el ${bonita(x.hito._fin)}, hace ${x.dias} días · responsable ${esc(x.hito.responsable)}</small></div>
+        <small>${esc(x.hito.nombre)} · terminaba el ${bonita(x.hito._fin)}, hace ${x.dias} días · responsable ${esc(x.hito.responsable)}${x.cuantas > 1 ? " · y " + (x.cuantas - 1) + " etapa(s) más sin cerrar" : ""}</small></div>
       <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
     </div>`).join("") : '<div class="vacio">Todo lo que ya venció está registrado.</div>';
 
@@ -1682,9 +1752,19 @@ window.addEventListener("resize", () => {
    Se abre agregando ?metodo a la dirección. No es una protección, solo evita
    ponerla delante de quien no la necesita. */
 const VER_METODO = location.search.indexOf("metodo") >= 0 || location.hash.indexOf("metodo") >= 0;
+/* Sin ?equipo la app queda en una sola pantalla, la vista de la universidad.
+   Con ?equipo aparecen el resto de las pestañas. */
+const MODO_EQUIPO = location.search.indexOf("equipo") >= 0 || location.hash.indexOf("equipo") >= 0 || VER_METODO;
 
 (async function init(){
   if(VER_METODO) document.getElementById("tabCfg").classList.remove("oculto");
+  if(!MODO_EQUIPO){
+    document.querySelectorAll(".tab").forEach(b => { if(b.dataset.t !== "uni") b.classList.add("oculto"); });
+    const bi = document.querySelector('[data-t="uni"]');
+    if(bi) bi.classList.add("oculto");   // una sola vista: no hace falta la pestaña
+    const pill = document.getElementById("pillActualizado");
+    if(pill) pill.classList.add("oculto");
+  }
   await cargarDatos();
   llenarSelector();
   pintarTodo();
