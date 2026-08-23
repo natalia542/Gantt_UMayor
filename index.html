@@ -139,6 +139,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .upunto.r{background:var(--rojo)} .upunto.cerr{background:var(--borde)}
 .unota{font-size:12px;color:var(--muted);margin:3px 0 0 18px;max-width:520px}
 .uleyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
+.ucerradas{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
 .bit{margin-top:18px;padding-top:14px;border-top:1px solid var(--borde)}
 .bitem{display:flex;gap:14px;padding:7px 0;font-size:13.5px;align-items:baseline}
 .bitem+.bitem{border-top:1px solid #F1F3F6}
@@ -1742,8 +1743,24 @@ function pintarUniversidad(){
   const programas = [];
   datos.forEach(a => { if(programas.indexOf(a.programa) < 0) programas.push(a.programa); });
 
-  cont.innerHTML = programas.map(prog => {
-    const grupo = datos.filter(a => a.programa === prog);
+  // Con más de un ciclo cargado, cada programa se parte por ciclo
+  const ciclos = [];
+  datos.forEach(a => { const c = String(a.ciclo || "").trim(); if(ciclos.indexOf(c) < 0) ciclos.push(c); });
+  ciclos.sort();
+  const bloques = [];
+  programas.forEach(prog => {
+    if(ciclos.length > 1) ciclos.forEach(c => bloques.push({prog, ciclo:c}));
+    else bloques.push({prog, ciclo:null});
+  });
+
+  cont.innerHTML = bloques.map(bl => {
+    const prog = bl.prog;
+    let grupo = datos.filter(a => a.programa === prog && (!bl.ciclo || String(a.ciclo || "").trim() === bl.ciclo));
+    if(!grupo.length) return "";
+
+    // Las cerradas no ocupan la pantalla: se resumen al final
+    const cerradas = grupo.filter(a => situacion(planificar(a), a).cerrado);
+    grupo = grupo.filter(a => cerradas.indexOf(a) < 0);
     const hoyF = hoy();
     grupo.sort((a,b) => {
       const ua = (a.fecha_inicio_clases && aFecha(a.fecha_inicio_clases) <= hoyF) ? 0 : 1;
@@ -1752,6 +1769,11 @@ function pintarUniversidad(){
       return (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999");
     });
     let notasClase = false;
+    if(!grupo.length && cerradas.length){
+      return `<div class="card"><h2>${esc(prog)}${bl.ciclo ? " · Ciclo " + esc(bl.ciclo) : ""}</h2>
+        <div class="desc">Todas las asignaturas están cerradas.</div>
+        <div class="ucerradas">${cerradas.map(a => esc(a.nombre)).join(" · ")}</div></div>`;
+    }
     const filas = grupo.map(a => {
       const p = planificar(a);
       const sit = situacion(p, a);
@@ -1804,12 +1826,15 @@ function pintarUniversidad(){
     }).join("");
 
     return `<div class="card">
-      <h2>${esc(prog)}</h2>
-      <div class="desc">${grupo.length} asignatura(s)${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
+      <h2>${esc(prog)}${bl.ciclo ? " · Ciclo " + esc(bl.ciclo) : ""}</h2>
+      <div class="desc">${grupo.length} asignatura(s) en curso${cerradas.length ? " · " + cerradas.length + " cerrada(s)" : ""}${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
       <div class="scroll"><table class="utabla">
         <tr><th>Asignatura</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
         ${filas}
       </table></div>
+      ${cerradas.length ? `<div class="ucerradas">
+        <b>Cerradas:</b> ${cerradas.map(a => esc(a.nombre)).join(" · ")}
+      </div>` : ""}
       <div class="uleyenda">
         <span><i class="upunto v"></i>Al día, en Hackea</span>
         <span><i class="upunto a"></i>Esperando al docente o a Educación Virtual</span>
