@@ -1003,6 +1003,19 @@ async function cargarDatos(){
       }, h));
       a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3";
     }
+    // Gatillo en la columna que no corresponde a la fase declarada
+    if(a.faseDeclarada){
+      const campos = {"1":["fecha_envio_contenido","envio_contenido"],
+                      "2":["fecha_envio_guiones","envio_guiones"],
+                      "3":["fecha_envio_docente","envio_recursos"]};
+      const propio = campos[a.faseDeclarada];
+      if(propio && !a[propio[0]]){
+        const otros = Object.keys(campos).filter(k => k !== a.faseDeclarada && a[campos[k][0]]);
+        if(otros.length) anota("RUTA", "—", "«" + a.nombre + "» está en la fase " + a.faseDeclarada +
+          " pero la columna " + propio[1] + " está vacía. Sí tiene fecha en " +
+          otros.map(k => campos[k][1]).join(" y ") + ". Sin la fecha de su fase, esa carta no se dibuja.");
+      }
+    }
     if(a.plan_manual){
       const faltan = a.hitos.filter(h => !h.fecha_plan_inicio && !h.fecha_real_inicio && !h.fecha_real_fin);
       if(faltan.length) anota("HITOS", "—", "«" + a.nombre + "» está en modo acordado pero le faltan fechas planificadas en " + faltan.length + " etapa(s). Esas etapas no se dibujan.");
@@ -1395,7 +1408,8 @@ function gantt(a, p){
   const activos = p.hitos.filter(h => h.activo && h._ini);
   if(!activos.length) return '<div class="vacio">Sin hitos planificados.</div>';
   let min = activos.reduce((m,h) => h._ini < m ? h._ini : m, activos[0]._ini);
-  let max = p.inicioClases;
+  // Las fases 1 y 2 no tienen inicio de clases: el eje termina en su último hito
+  let max = p.inicioClases || activos.reduce((m,h) => h._fin > m ? h._fin : m, activos[0]._fin);
   activos.forEach(h => {
     if(h.fecha_real_inicio && aFecha(h.fecha_real_inicio) < min) min = aFecha(h.fecha_real_inicio);
     if(h.fecha_real_fin && aFecha(h.fecha_real_fin) > max) max = aFecha(h.fecha_real_fin);
@@ -1447,7 +1461,7 @@ function gantt(a, p){
   const hoyX = (hoy() >= min && hoy() <= max) ? `<div class="linea hoy" style="left:${x(hoy())}px"><span>hoy</span></div>` : "";
   const lineas = `
     ${p.envioQA ? `<div class="linea" style="left:${x(p.envioQA)}px;border-left-color:#5C6169"><span style="color:#3F444B">envío a QA</span></div>` : ""}
-    <div class="linea" style="left:${x(p.inicioClases)}px"><span>inicio de clases</span></div>
+    ${p.inicioClases ? `<div class="linea" style="left:${x(p.inicioClases)}px"><span>inicio de clases</span></div>` : ""}
     ${hoyX}`;
 
   return `<div class="tl" style="width:${ETQ + total*px + 190}px">
