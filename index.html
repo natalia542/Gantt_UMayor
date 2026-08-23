@@ -1215,7 +1215,8 @@ function pintarLista(){
       else { texto = p.colchon + " días antes de clases"; color = p.colchon <= 9 ? "var(--ambar)" : "var(--verde)"; }
     }else if(p.holgura < 0){ texto = Math.abs(p.holgura) + " días de atraso sobre el envío a QA"; color = "var(--rojo)"; }
     else if(p.propuesta){ texto = "enviar a más tardar el " + bonita(p.ultimoTren); color = "var(--muted)"; }
-    else { texto = p.holgura + " días de margen al cierre"; color = p.holgura <= 4 ? "var(--ambar)" : "var(--verde)"; }
+    else if(MODO_EQUIPO){ texto = p.holgura + " días de margen al cierre"; color = p.holgura <= 4 ? "var(--ambar)" : "var(--verde)"; }
+    else { texto = "cierra el " + bonita(p.finProceso); color = "var(--cuerpo)"; }
     return `<div class="fila">
       <span class="sem ${p.semaforo}"></span>
       <div class="nom">${esc(a.nombre)}
@@ -1298,9 +1299,13 @@ function pintarDetalle(){
       Enviando al docente el ${bonita(p.partida)}, el montaje termina ${faltan} días después del envío a QA del ${bonita(p.envioQA)}.
       Había que enviar a más tardar el ${bonita(p.ultimoTren)}. La semana del docente, la ventana de QA y la revisión final no se recortan.</div>`;
   }else if(p.propuesta){
-    alerta = `<div class="aviso">Todavía sin fecha de envío al docente en la planilla. Para llegar al envío a QA del ${bonita(p.envioQA)}, los recursos tienen que salir <b>a más tardar el ${bonita(p.ultimoTren)}</b>.</div>`;
+    alerta = MODO_EQUIPO
+      ? `<div class="aviso">Todavía sin fecha de envío al docente en la planilla. Para llegar al envío a QA del ${bonita(p.envioQA)}, los recursos tienen que salir <b>a más tardar el ${bonita(p.ultimoTren)}</b>.</div>`
+      : `<div class="aviso">La fecha de envío de los recursos al docente todavía se está coordinando.</div>`;
   }else{
-    alerta = `<div class="aviso">Recursos al docente el <b>${bonita(p.partida)}</b>. Entra a QA el ${bonita(p.envioQA)} y el proceso cierra el <b>${bonita(p.finProceso)}</b>, con ${p.holgura} días de margen antes del ${p.limitadoPorContrato ? "término de contrato" : "inicio de clases"} del ${bonita(p.techo)}.</div>`;
+    alerta = MODO_EQUIPO
+      ? `<div class="aviso">Recursos al docente el <b>${bonita(p.partida)}</b>. Entra a QA el ${bonita(p.envioQA)} y el proceso cierra el <b>${bonita(p.finProceso)}</b>, con ${p.holgura} días de margen antes del ${p.limitadoPorContrato ? "término de contrato" : "inicio de clases"} del ${bonita(p.techo)}.</div>`
+      : `<div class="aviso">Esta asignatura tiene que quedar cerrada el <b>${bonita(p.finProceso)}</b>. Los recursos salen al docente el ${bonita(p.partida)} y entran a revisión de calidad de la Universidad el ${bonita(p.envioQA)}.</div>`;
     if(p.recortes && p.recortes.length)
       alerta += `<div class="aviso alerta">No alcanzaba con los plazos holgados, así que se recortaron: <b>${p.recortes.map(o => ELASTICO[o].nota + " a " + ELASTICO[o].minimo + " día(s)").join(" · ")}</b>.</div>`;
   }
@@ -1356,14 +1361,18 @@ function pintarDetalle(){
     <div class="desc">${esc(a.programa)} · Ciclo ${esc(a.ciclo || "?")} · ${esc(faseActual(a))} · ${esc(a.docente || "sin docente")} · ${a.unidades || "?"} unidades · ${a.horas_asincronas || "?"} horas asíncronas</div>
     ${alerta}
     <div class="grid g3">
-      ${tarjeta("Inicio de clases", bonita(p.inicioClases))}
-      ${tarjeta(p.manual ? "Cierre del proceso" : "Fecha máxima del 100%", bonita(p.manual ? p.finProceso : p.fecha100))}
-      ${tarjeta("Retroalimentación QA", bonita(p.retroQA))}
-      ${tarjeta("Envío a QA Ed. Virtual", bonita(p.envioQA))}
+      ${MODO_EQUIPO
+        ? tarjeta("Inicio de clases", bonita(p.inicioClases)) +
+          tarjeta(p.manual ? "Cierre del proceso" : "Fecha máxima del 100%", bonita(p.manual ? p.finProceso : p.fecha100)) +
+          tarjeta("Retroalimentación QA", bonita(p.retroQA)) +
+          tarjeta("Envío a QA Ed. Virtual", bonita(p.envioQA))
+        : tarjeta("Cierre comprometido", bonita(p.manual ? p.finProceso : p.fecha100)) +
+          tarjeta("Revisión de calidad", bonita(p.envioQA) + " al " + bonita(p.retroQA)) +
+          tarjeta("Inicio de clases", bonita(p.inicioClases))}
     </div>
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
     ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
-    ${tarjetaRuta(a, ruta)}
+    ${MODO_EQUIPO ? tarjetaRuta(a, ruta) : ""}
     ${rutaFases(a)}
     ${bloqueBitacora(a, !MODO_EQUIPO)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
@@ -1975,7 +1984,13 @@ function pintarUniversidad(){
         }
         if(x2){
           etapa = tituloEtapa(x2);
-          hasta = x2._fin ? bonita(x2._fin) : "por definir";
+          if(x2._fin) hasta = bonita(x2._fin);
+          else {
+            // Etapa sin plazo comprometido: se muestra el siguiente hito con fecha
+            const sig = (lista || []).slice().sort((u,v) => u.orden - v.orden)
+                          .filter(u => u.orden > x2.orden && u._fin)[0];
+            hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
+          }
           if(x2.responsable.indexOf("Docente") >= 0 && x2.responsable.indexOf("Hackea") < 0)
             quien = "<b>" + esc(a.docente || "El docente") + "</b>";
           else if(x2.responsable.indexOf("Docente") >= 0) quien = "Hackea y " + esc((a.docente || "el docente").split(" ")[0]);
@@ -1994,7 +2009,12 @@ function pintarUniversidad(){
       else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
       else if(x){
         etapa = tituloEtapa(x);
-        hasta = bonita(x._fin);
+        if(x._fin) hasta = bonita(x._fin);
+        else {
+          const sig = p.hitos.slice().sort((u,v) => u.orden - v.orden)
+                        .filter(u => u.activo && u.orden > x.orden && u._fin)[0];
+          hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
+        }
         if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
         else if(x.responsable.indexOf("Docente") >= 0) quien = "<b>" + esc(a.docente || "El docente") + "</b>";
         else quien = "Hackea";
