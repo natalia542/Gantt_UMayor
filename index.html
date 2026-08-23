@@ -134,6 +134,9 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .utabla td{padding:11px 8px;vertical-align:top}
 .utabla th{padding:6px 8px 9px}
 .utabla .usec{color:var(--muted)}
+.ufase{white-space:nowrap;font-size:12.5px;color:var(--cuerpo)}
+.fnum{display:inline-block;width:19px;height:19px;line-height:19px;text-align:center;border-radius:50%;
+      background:var(--azul-suave);color:#0069b5;font-size:11px;font-weight:bold;margin-right:7px}
 .upunto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:9px;flex:none}
 .upunto.v{background:var(--verde)} .upunto.a{background:var(--ambar)}
 .upunto.r{background:var(--rojo)} .upunto.cerr{background:var(--borde)}
@@ -264,7 +267,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
   <section id="v-cons" class="oculto">
     <div class="card">
       <h2>Todas las asignaturas en el tiempo</h2>
-      <div class="desc">Cada barra muestra el tramo de trabajo de Hackea, la ventana de QA y el tramo final antes del inicio de clases.</div>
+      <div class="desc">Solo las asignaturas que están en producción. Las que siguen en contenido o guiones no aparecen: sus fechas de producción todavía no están definidas.</div>
       <div style="max-width:280px;margin-bottom:14px">
         <label>Programa</label>
         <select id="fConsCiclo" onchange="pintarConsolidado(); pintarCarga();" style="margin-bottom:8px"><option value="">Todos los ciclos</option></select>
@@ -283,7 +286,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     </div>
     <div class="card">
       <h2>Carga por semana</h2>
-      <div class="desc">Cantidad de asignaturas con trabajo de Hackea activo cada semana, según el programa seleccionado arriba. Los picos son los topes que hay que anticipar.</div>
+      <div class="desc">Asignaturas en producción con trabajo de Hackea activo cada semana. Los picos son los topes que hay que anticipar.</div>
       <div class="scroll" id="carga"></div>
     </div>
   </section>
@@ -409,7 +412,7 @@ let estado = { asignaturas: [], problemas: [], leidoEn: null };
 /* Segundo techo: fecha en que el contrato exige la asignatura montada y
    aprobada por Educación Virtual. Manda el más exigente de los dos techos,
    este o el inicio de clases. */
-let CONTRATO = aFechaSegura("2026-12-31");
+let CONTRATO = aFechaSegura("2027-01-31");
 /* Relato cronológico por asignatura. Explica el porqué de los cambios,
    que es lo que ninguna tabla de desvíos alcanza a decir. */
 let BITACORA = {};
@@ -471,6 +474,16 @@ function tituloEtapa(h){
    está la asignatura y qué orden ya quedó atrás dentro de esa fase.
    Se compara sin tildes ni mayúsculas para tolerar variaciones de tipeo. */
 const MAPA_ETAPAS = [
+  // Fase 1 · Desarrollo de contenido
+  {t:"reunion inicial",                     fase:"1", hasta:1},
+  {t:"desarrollo de contenido",             fase:"1", hasta:2},
+  {t:"envio del contenido al docente",      fase:"1", hasta:3},
+  {t:"en revision de contenido (docente)",  fase:"1", hasta:4},
+  {t:"en revision de contenido (prof)",     fase:"1", hasta:4},
+  {t:"reunion 2",                           fase:"1", hasta:5},
+  {t:"ajustes de contenido hackea",         fase:"1", hasta:6},
+  {t:"ajustes hackea - contenidos",         fase:"1", hasta:6},
+  {t:"cierre de contenidos",                fase:"1", hasta:7},
   // Fase 2 · Guionización
   {t:"guionizacion hackea",                 fase:"2", hasta:0},
   {t:"envio de guiones al docente",         fase:"2", hasta:2},
@@ -1036,6 +1049,8 @@ function modoDemostracion(){
 }
 
 /* ═══════════ ALERTAS ═══════════ */
+function tieneExplicacion(a){ return !!(BITACORA[a.id] && BITACORA[a.id].length); }
+
 function calcularAlertas(){
   const plan = [], vencidas = [];
   const h = hoy();
@@ -1043,15 +1058,15 @@ function calcularAlertas(){
     const p = planificar(a);
     if(p.limitadoPorContrato){
       const nivel = (p.holgura < 0 || p.ultimoTren < h) ? "r" : "a";
-      plan.push({a, nivel, msg:"Manda el término de contrato, no el inicio de clases" +
+      plan.push({a, nivel, clave:"contrato", msg:"Manda el término de contrato, no el inicio de clases" +
         (a.fecha_inicio_clases ? " del " + bonita(aFecha(a.fecha_inicio_clases)) : "") +
         ". Para cerrar antes del " + bonita(CONTRATO) + ", los recursos tienen que salir al docente a más tardar el " +
-        bonita(p.ultimoTren) + (p.ultimoTren < h ? ", fecha que ya pasó." : ".")});
+        bonita(p.ultimoTren) + (p.ultimoTren < h ? ", fecha que ya pasó." : "."), tope: bonita(p.ultimoTren)});
     }
     if(!a.fecha_inicio_clases){
       const r = rutaCompleta(a);
       if(r.proyeccion){
-        plan.push({a, nivel:"a", msg:"Sin fecha de inicio de clases. Con los envíos cargados quedaría cerrada el " +
+        plan.push({a, nivel:"a", clave:"sin-inicio", msg:"Sin fecha de inicio de clases. Con los envíos cargados quedaría cerrada el " +
           bonita(r.proyeccion.cierre) + ", así que las clases no podrían partir antes del " +
           bonita(r.proyeccion.inicioPosible) + ". Hay que confirmar la fecha con Postgrado antes de comprometerla."});
       }else{
@@ -1061,10 +1076,10 @@ function calcularAlertas(){
     }
     if(p.manual){
       if(p.colchon < 7) plan.push({a, nivel:"r", msg:"El plan acordado cierra el " + bonita(p.finProceso) + ", a " + p.colchon + " días del inicio de clases. El mínimo es una semana."});
-      if(p.diasQAplan !== null && p.diasQAplan < 10) plan.push({a, nivel:"r", msg:"La ventana de QA de este plan es de " + p.diasQAplan + " días hábiles sobre los 10 comprometidos con Educación Virtual."});
+      if(p.diasQAplan !== null && p.diasQAplan < 10) plan.push({a, nivel:"r", clave:"qa-corto", msg:"La ventana de QA de este plan es de " + p.diasQAplan + " días hábiles sobre los 10 comprometidos con Educación Virtual."});
     }else{
       if(p.holgura < 0) plan.push({a, nivel:"r", msg:"No alcanza: enviando el " + bonita(p.partida) + " el montaje termina " + Math.abs(p.holgura) + " días después del envío a QA. La fecha tope de envío era el " + bonita(p.ultimoTren) + "."});
-      else if(p.propuesta) plan.push({a, nivel:"g", msg:"Sin fecha de envío al docente. Tope: " + bonita(p.ultimoTren) + "."});
+      else if(p.propuesta) plan.push({a, nivel:"g", clave:"sin-envio", msg:"Sin fecha de envío al docente. Tope: " + bonita(p.ultimoTren) + "."});
       else if(p.recortes && p.recortes.length) plan.push({a, nivel:"a", msg:"Plan comprimido: " + p.recortes.map(o => ELASTICO[o].nota.toLowerCase()).join(" y ") + " al mínimo."});
       else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de margen entre el cierre del proceso y la fecha límite."});
     }
@@ -1077,8 +1092,34 @@ function calcularAlertas(){
       vencidas.push({a, hito:x, dias: diffDias(x._fin, h), cuantas: atrasadas.length});
     }
   });
+  // Lo explicado en la bitácora deja de ser urgente: ya tiene dueño y relato
+  plan.forEach(x => {
+    if(x.nivel === "r" && tieneExplicacion(x.a)){ x.nivel = "a"; x.explicado = true; }
+  });
+  // Un aviso que se repite igual en muchas asignaturas se agrupa
+  const porMsg = {};
+  plan.forEach(x => {
+    const k = x.clave || x.msg.split(".")[0];
+    (porMsg[k] = porMsg[k] || []).push(x);
+  });
+  const agrupadas = [];
+  Object.keys(porMsg).forEach(k => {
+    const g = porMsg[k];
+    if(g.length >= 3 && g[0].nivel !== "r"){
+      const TITULO = {
+        "contrato": "El techo de estas asignaturas es el término de contrato del " + bonita(CONTRATO) + ", no su inicio de clases",
+        "sin-envio": "Sin fecha de envío al docente en la planilla",
+        "sin-inicio": "Sin fecha de inicio de clases confirmada",
+        "qa-corto": "La ventana de QA es más corta que los 10 días hábiles comprometidos"
+      };
+      agrupadas.push({a:{id:"", nombre: g.length + " asignaturas", programa:""}, nivel:g[0].nivel,
+                      msg: (TITULO[k] || k) + ". " + g.map(x => x.a.nombre + (x.tope ? " (tope " + x.tope + ")" : "")).join(" · "), grupo:true});
+    }else{ g.forEach(x => agrupadas.push(x)); }
+  });
+  const rango = {r:0, a:1, g:2};
+  agrupadas.sort((x,y) => (rango[x.nivel] - rango[y.nivel]));
   vencidas.sort((x,y) => y.dias - x.dias);
-  return {plan, vencidas};
+  return {plan: agrupadas, vencidas};
 }
 
 /* ═══════════ NAVEGACIÓN Y PINTADO ═══════════ */
@@ -1244,8 +1285,21 @@ function pintarDetalle(){
   }
 
   const ruta = rutaCompleta(a);
-  const gantts = a.listaFases.map(clave => {
+  /* La fase en curso va primero y desplegada. Las cerradas quedan abajo,
+     y las que no han empezado no muestran carta: sus fechas serían inventadas. */
+  const actualF = a.faseDeclarada || "3";
+  const ordenadas = a.listaFases.slice().sort((x, y) => {
+    const kx = claveFase(x), ky = claveFase(y);
+    const rx = kx === actualF ? 0 : (kx < actualF ? 1 : 2);
+    const ry = ky === actualF ? 0 : (ky < actualF ? 1 : 2);
+    return rx !== ry ? rx - ry : kx.localeCompare(ky);
+  });
+  const gantts = ordenadas.map(clave => {
     const k = claveFase(clave);
+    if(k > actualF){
+      return `<div class="card"><h2>${esc(nombreFase(clave))}</h2>
+        <div class="aviso">Esta fase todavía no comienza. Sus fechas se calculan cuando cierre la ${esc(nombreFase(ordenadas[0]).toLowerCase())}.</div></div>`;
+    }
     const sub = Object.assign({}, a, {hitos: a.fases[clave], plan_manual: a.plan_manual});
     let pf;
     if(k === "3"){ pf = planificar(sub); }
@@ -1253,10 +1307,11 @@ function pintarDetalle(){
     else { pf = ruta.fases[k] || planFijado(sub, aFecha(a.fecha_inicio_clases)); }
     if(pf.vacio){
       return `<div class="card"><h2>${esc(nombreFase(clave))}</h2>
-        <div class="aviso">Todavía sin fecha de envío al docente para esta fase. En cuanto se cargue en la planilla, la carta se dibuja sola.</div></div>`;
+        <div class="aviso">Falta la fecha de envío al docente de esta fase en la planilla. En cuanto se cargue, la carta se dibuja sola con todas sus etapas.</div></div>`;
     }
+    const enCurso = (k === actualF);
     return `<div class="card">
-      <h2>${esc(nombreFase(clave))}</h2>
+      <h2>${esc(nombreFase(clave))}${enCurso ? ' <span class="tag azul" style="vertical-align:middle">Fase en curso</span>' : ' <span class="tag">Cerrada</span>'}</h2>
       <div class="desc">La barra clara es lo planificado. La barra sólida abajo es lo que realmente ocurrió.</div>
       ${esMovil()
         ? lineaVertical(pf)
@@ -1395,15 +1450,17 @@ function gantt(a, p){
 }
 
 /* ═══════════ CONSOLIDADO ═══════════ */
-function asignaturasFiltradas(){
+function asignaturasFiltradas(soloProduccion){
   const el = document.getElementById("fCons");
   const f = el ? el.value : "";
   const fc = valorFiltro("fConsCiclo");
-  return estado.asignaturas.filter(a => (!f || a.programa === f) && (!fc || String(a.ciclo).trim() === fc));
+  return estado.asignaturas.filter(a =>
+    (!f || a.programa === f) && (!fc || String(a.ciclo).trim() === fc) &&
+    (!soloProduccion || !a.faseDeclarada || a.faseDeclarada === "3"));
 }
 
 function pintarConsolidado(){
-  const datos = asignaturasFiltradas().slice()
+  const datos = asignaturasFiltradas(true).slice()
     .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => ({a, p: planificar(a)}));
   if(!datos.length){ document.getElementById("consolidado").innerHTML = '<div class="vacio">Sin asignaturas.</div>'; return; }
@@ -1443,7 +1500,7 @@ function pintarConsolidado(){
 
 function pintarCarga(){
   const conteo = {};
-  asignaturasFiltradas().forEach(a => {
+  asignaturasFiltradas(true).forEach(a => {
     const p = planificar(a);
     p.hitos.filter(h => h.activo && h._ini && h.responsable.includes("Hackea")).forEach(h => {
       let d = new Date(h._ini.getTime());
@@ -1886,10 +1943,32 @@ function pintarUniversidad(){
       const previa = a.faseDeclarada && a.faseDeclarada < "3";
       let punto = "v", hasta = "—", quien = "—", etapa = "—";
       if(previa){
-        etapa = a.etapaTexto || "En fases previas";
-        quien = (a.etapaTexto || "").toLowerCase().indexOf("docente") >= 0 ? "<b>" + esc(a.docente || "El docente") + "</b>" : "Hackea";
-        hasta = "producción aún no comienza";
-        punto = "a";
+        // La etapa y la fecha salen de la fase en curso, no de la de producción
+        const cl = a.listaFases.filter(c => claveFase(c) === a.faseDeclarada)[0];
+        const hs = cl ? a.fases[cl] : null;
+        let x2 = null;
+        if(hs){
+          const pf = (rutaCompleta(a).fases[a.faseDeclarada]) || null;
+          const lista = (pf && pf.hitos) ? pf.hitos : hs;
+          x2 = lista.slice().sort((u,v) => u.orden - v.orden).filter(u => !hitoCerrado(u, a))[0];
+        }
+        if(x2){
+          etapa = tituloEtapa(x2);
+          hasta = x2._fin ? bonita(x2._fin) : "por definir";
+          if(x2.responsable.indexOf("Docente") >= 0 && x2.responsable.indexOf("Hackea") < 0)
+            quien = "<b>" + esc(a.docente || "El docente") + "</b>";
+          else if(x2.responsable.indexOf("Docente") >= 0) quien = "Hackea y " + esc((a.docente || "el docente").split(" ")[0]);
+          else quien = "Hackea";
+          punto = (x2.responsable.indexOf("Hackea") >= 0) ? "v" : "a";
+          if(x2._fin && x2._fin < hoyF && !hitoCerrado(x2, a)){
+            punto = "r";
+            hasta = bonita(x2._fin) + ' · <b style="color:var(--rojo)">' + diffDias(x2._fin, hoyF) + " días de atraso</b>";
+          }
+        }else{
+          etapa = tituloEtapa({fase:a.faseDeclarada, orden:1, nombre:a.etapaTexto || ""});
+          hasta = "por definir";
+          punto = "a";
+        }
       }
       else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
       else if(x){
@@ -1920,6 +1999,7 @@ function pintarUniversidad(){
         <td><span class="upunto ${punto}"></span>${esc(a.nombre)}
           ${enClases ? '<span class="tag" style="margin-left:8px;border-color:var(--ambar);color:#7A4E00">Clases en curso</span>' : ""}
           ${notas.length ? `<div class="unota">${notas.join(" · ")}</div>` : ""}</td>
+        <td class="ufase"><span class="fnum">${esc(a.faseDeclarada || "?")}</span>${esc(NOMBRE_FASE[a.faseDeclarada] || "")}</td>
         <td class="usec">${esc(etapa)}</td>
         <td>${quien}</td>
         <td>${hasta}</td>
@@ -1932,7 +2012,7 @@ function pintarUniversidad(){
       <h2>${esc(prog)}${bl.ciclo ? " · Ciclo " + esc(bl.ciclo) : ""}</h2>
       <div class="desc">${grupo.length} asignatura(s) en curso${cerradas.length ? " · " + cerradas.length + " cerrada(s)" : ""}${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
       <div class="scroll"><table class="utabla">
-        <tr><th>Asignatura</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
+        <tr><th>Asignatura</th><th>Fase</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
         ${filas}
       </table></div>
       ${cerradas.length ? `<div class="ucerradas">
@@ -1954,9 +2034,9 @@ function pintarAlertas(al){
   const p = document.getElementById("alertasPlan");
   p.innerHTML = al.plan.length ? al.plan.map(x => `<div class="fila">
       <span class="sem ${x.nivel}"></span>
-      <span class="tag azul">${esc(x.a.programa)}</span>
-      <div class="nom">${esc(x.a.nombre)}<small>${esc(x.msg)}</small></div>
-      <button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>
+      ${x.a.programa ? `<span class="tag azul">${esc(x.a.programa)}</span>` : ""}
+      <div class="nom">${esc(x.a.nombre)}<small>${esc(x.msg)}${x.explicado ? " · <i>explicado en la bitácora</i>" : ""}</small></div>
+      ${x.a.id ? `<button class="btn mini sec" onclick="verDetalle('${x.a.id}')">Ver</button>` : ""}
     </div>`).join("") : '<div class="vacio">Ninguna asignatura necesita una decisión hoy.</div>';
 
   const v = document.getElementById("alertasVencidas");
