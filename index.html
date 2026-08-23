@@ -139,6 +139,25 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .upunto.r{background:var(--rojo)} .upunto.cerr{background:var(--borde)}
 .unota{font-size:12px;color:var(--muted);margin:3px 0 0 18px;max-width:520px}
 .uleyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
+.fruta{margin:18px 0 4px}
+.fbarras{display:flex;gap:0}
+.fcol{flex:1;text-align:center;padding:0 4px}
+.fbarra{height:6px;background:#E3E6EB}
+.fbarra.hecha{background:#9FD9C3}
+.fbarra.curso{background:var(--azul)}
+.fetq{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:10px}
+.fetq.on{color:var(--azul);font-weight:bold}
+.fnom{font-size:13.5px;color:var(--cuerpo);margin-top:2px}
+.fnom.on{color:var(--tinta);font-weight:bold}
+.fpie{font-size:12px;margin-top:4px;color:var(--muted)}
+.fpie.hecha{color:#0F6E56}
+.fdet{background:var(--superficie);border:1px solid var(--borde);border-radius:8px;padding:13px 15px;margin-top:20px}
+.fdet-t{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:11px}
+.fpills{display:flex;flex-wrap:wrap;gap:6px 7px}
+.fpill{font-size:12.5px;padding:4px 11px;border-radius:20px;background:var(--blanco);color:var(--muted);border:1px solid var(--borde)}
+.fpill.hecho{background:#E5F4EE;color:#0F6E56;border-color:#BEE3D3}
+.fpill.curso{background:var(--azul);color:#fff;border-color:#0071c6;font-weight:bold}
+@media(max-width:640px){ .fnom{font-size:12px} .fetq{font-size:9.5px} }
 .ucerradas{font-size:12.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
 .bit{margin-top:18px;padding-top:14px;border-top:1px solid var(--borde)}
 .bitem{display:flex;gap:14px;padding:7px 0;font-size:13.5px;align-items:baseline}
@@ -406,6 +425,48 @@ const FERIADOS_DEFECTO = [
 
 /* Marca de avance por asignatura: evita registrar hito por hito.
    Todo lo anterior a la etapa marcada se considera hecho en fecha. */
+/* Nombre de cada etapa en lenguaje del docente. La nomenclatura interna
+   se conserva para el equipo; esto es lo que lee la universidad. */
+const NOMBRE_DOCENTE = {
+  "1": {
+    1:"Reunión inicial contigo y la dirección del programa",
+    2:"Escribimos el contenido",
+    3:"Te enviamos el contenido",
+    4:"Lo revisas y nos dejas tus observaciones",
+    5:"Reunión para revisar tus observaciones",
+    6:"Aplicamos tus ajustes",
+    7:"Cerramos el contenido y pasamos a los guiones"
+  },
+  "2": {
+    1:"Escribimos los guiones",
+    2:"Te enviamos los guiones",
+    3:"Los revisas y nos dejas tus observaciones",
+    4:"Reunión para revisar tus observaciones",
+    5:"Aplicamos tus ajustes",
+    6:"Cerramos los guiones y pasamos a producción"
+  },
+  "3": {
+    1:"Te enviamos los recursos producidos",
+    2:"Los revisas y nos dejas tus observaciones",
+    3:"Reunión para revisar tus observaciones",
+    4:"Aplicamos tus ajustes",
+    5:"Montamos la asignatura en Blackboard",
+    6:"Revisión de calidad de la Universidad",
+    7:"Aplicamos lo que pide la revisión de calidad",
+    8:"Revisión final tuya en la plataforma"
+  }
+};
+const NOMBRE_FASE = {
+  "1":"Desarrollo de contenido",
+  "2":"Guionización",
+  "3":"Diseño y producción de recursos"
+};
+function tituloEtapa(h){
+  if(MODO_EQUIPO) return h.nombre;
+  const f = NOMBRE_DOCENTE[claveFase(h.fase)];
+  return (f && f[h.orden]) ? f[h.orden] : h.nombre;
+}
+
 /* Nomenclatura oficial de la planilla base. Cada etapa indica en qué fase
    está la asignatura y qué orden ya quedó atrás dentro de esa fase.
    Se compara sin tildes ni mayúsculas para tolerar variaciones de tipeo. */
@@ -554,6 +615,12 @@ function planFijado(asig, inicioClases){
   hitos.forEach(h => {
     h._ini = aFecha(h.fecha_plan_inicio);
     h._fin = aFecha(h.fecha_plan_fin) || h._ini;
+    // Sin fecha planificada, si sabemos cuándo ocurrió de verdad, se dibuja igual
+    if(!h._ini && (h.fecha_real_inicio || h.fecha_real_fin)){
+      h._ini = aFecha(h.fecha_real_inicio || h.fecha_real_fin);
+      h._fin = aFecha(h.fecha_real_fin || h.fecha_real_inicio);
+      h._sinPlan = true;
+    }
     if(!h._ini) h.activo = false;
   });
   const vivos = hitos.filter(h => h.activo && h._ini);
@@ -923,7 +990,7 @@ async function cargarDatos(){
       a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3";
     }
     if(a.plan_manual){
-      const faltan = a.hitos.filter(h => !h.fecha_plan_inicio);
+      const faltan = a.hitos.filter(h => !h.fecha_plan_inicio && !h.fecha_real_inicio && !h.fecha_real_fin);
       if(faltan.length) anota("HITOS", "—", "«" + a.nombre + "» está en modo acordado pero le faltan fechas planificadas en " + faltan.length + " etapa(s). Esas etapas no se dibujan.");
     }
   });
@@ -1221,6 +1288,7 @@ function pintarDetalle(){
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
     ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
     ${tarjetaRuta(a, ruta)}
+    ${rutaFases(a)}
     ${bloqueBitacora(a, !MODO_EQUIPO)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="irA('uni')">← Volver al estado por programa</button>
@@ -1242,7 +1310,7 @@ function tablaHitos(p){
         const vencido = x._fin && x._fin < h && !x.fecha_real_fin;
         return `<tr>
           <td class="num">${x.orden}</td>
-          <td>${esc(x.nombre)}${x.nota ? `<br><small style="color:var(--muted)">${esc(x.nota)}</small>` : ""}</td>
+          <td>${esc(tituloEtapa(x))}${x.nota ? `<br><small style="color:var(--muted)">${esc(x.nota)}</small>` : ""}</td>
           <td>${esc(x.responsable)}</td>
           <td>${bonita(x._ini)} → ${bonita(x._fin)}</td>
           <td>${(x.fecha_real_inicio || x.fecha_real_fin)
@@ -1307,7 +1375,7 @@ function gantt(a, p){
                    style="left:${x(ri)}px;width:${Math.max(px,(diffDias(ri,rf)+1)*px)}px"></div>`;
     }
     return `<div class="rowg">
-      <div class="etq">${esc(recortar(h.nombre, 32))}</div>
+      <div class="etq">${esc(recortar(tituloEtapa(h), 32))}</div>
       <div class="barra-plan${qa}" title="Planificado: ${rango}" style="left:${izq}px;width:${an}px"></div>
       <div class="fechabarra" style="left:${izq + an + 8}px">${rango}</div>
       ${real}
@@ -1431,7 +1499,7 @@ function lineaVertical(p){
       pie = `<div class="vreal">En curso</div>`;
     }
     return `<div class="vitem ${cls}"><div class="vpunto"></div>
-      <div class="vtit">${esc(x.nombre)}</div>
+      <div class="vtit">${esc(tituloEtapa(x))}</div>
       <div class="vmeta">${esc(x.responsable)} · ${bonita(x._ini)} → ${bonita(x._fin)}</div>
       ${pie}</div>`;
   }).join("")}</div>`;
@@ -1544,6 +1612,41 @@ function proyectarCierre(a, envioRecursos){
     cursor = (o === 1) ? ini : masDias(fin, 1);
   });
   return {cierre: fin, inicioPosible: masDias(fin, 7)};
+}
+
+/* Mapa gráfico: las tres fases y, dentro de la actual, sus etapas.
+   Todo se deduce de la etapa declarada: no agrega registro. */
+function rutaFases(a){
+  const claves = ["1","2","3"];
+  const actual = a.faseDeclarada || "3";
+  const barras = claves.map((k, i) => {
+    let cls = "pend", pie = "Pendiente";
+    if(k < actual){ cls = "hecha"; pie = "Cerrada"; }
+    else if(k === actual){ cls = "curso"; pie = "En curso"; }
+    const radio = i === 0 ? "border-radius:3px 0 0 3px" : (i === 2 ? "border-radius:0 3px 3px 0" : "");
+    return `<div class="fcol">
+      <div class="fbarra ${cls}" style="${radio}"></div>
+      <div class="fetq ${cls === "curso" ? "on" : ""}">Fase ${k}${cls === "curso" ? " · aquí estamos" : ""}</div>
+      <div class="fnom ${cls === "curso" ? "on" : ""}">${NOMBRE_FASE[k]}</div>
+      <div class="fpie ${cls}">${pie}</div>
+    </div>`;
+  }).join("");
+
+  const hs = (a.fases[a.listaFases.filter(c => claveFase(c) === actual)[0]] || []);
+  let pastillas = "";
+  if(hs.length){
+    const p = planificar(Object.assign({}, a, {hitos: hs}));
+    pastillas = `<div class="fdet">
+      <div class="fdet-t">Dentro de la fase ${actual}</div>
+      <div class="fpills">${hs.slice().sort((x,y) => x.orden - y.orden).filter(h => h.activo !== false).map(h => {
+        const hecho = hitoCerrado(h, a);
+        const enCurso = !hecho && h.orden === (a.avanceHasta || 0) + 1;
+        const f = h._fin ? " · hasta el " + bonita(h._fin) : "";
+        return `<span class="fpill ${hecho ? "hecho" : (enCurso ? "curso" : "")}">${hecho ? "✓ " : ""}${esc(tituloEtapa(h))}${enCurso ? f : ""}</span>`;
+      }).join("")}</div>
+    </div>`;
+  }
+  return `<div class="fruta"><div class="fbarras">${barras}</div>${pastillas}</div>`;
 }
 
 function bloqueBitacora(a, soloVisibles){
@@ -1790,7 +1893,7 @@ function pintarUniversidad(){
       }
       else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
       else if(x){
-        etapa = a.etapaTexto || x.nombre;
+        etapa = tituloEtapa(x);
         hasta = bonita(x._fin);
         if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
         else if(x.responsable.indexOf("Docente") >= 0) quien = "<b>" + esc(a.docente || "El docente") + "</b>";
