@@ -173,7 +173,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <div class="divisor"></div>
     <div>
       <h1>Ruta de Producción · Universidad Mayor</h1>
-      <div class="sub">Ciclo 2 · Seguimiento de planificación y avance real</div>
+      <div class="sub" id="subtitulo">Seguimiento de planificación y avance real</div>
     </div>
   </div>
 </header>
@@ -234,7 +234,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
   </section>
 
   <section id="v-det" class="oculto">
-    <div class="card">
+    <div class="card" id="cardSelAsig">
       <label>Asignatura</label>
       <select id="selAsig" onchange="pintarDetalle()"></select>
     </div>
@@ -1039,6 +1039,14 @@ function valorFiltro(id){ const el = document.getElementById(id); return el ? el
 
 function pintarTodo(){
   llenarCiclos();
+  const sub = document.getElementById("subtitulo");
+  if(sub){
+    const cs = [];
+    estado.asignaturas.forEach(a => { const c = String(a.ciclo||"").trim(); if(c && cs.indexOf(c)<0) cs.push(c); });
+    cs.sort();
+    sub.textContent = (cs.length ? (cs.length === 1 ? "Ciclo " + cs[0] : "Ciclos " + cs.join(" y ")) + " · " : "") +
+                      "Seguimiento de planificación y avance real";
+  }
   const al = calcularAlertas();
   const total = al.plan.filter(x => x.nivel === "r").length + al.vencidas.length + estado.problemas.length;
   document.getElementById("contAlertas").textContent = total ? "(" + total + ")" : "";
@@ -1196,6 +1204,9 @@ function pintarDetalle(){
   }).join("");
 
   cont.innerHTML = `
+  <div style="margin-bottom:12px">
+    <button class="btn sec mini" onclick="irA('uni')">← Volver</button>
+  </div>
   <div class="card">
     <h2>${esc(a.nombre)}</h2>
     <div class="desc">${esc(a.programa)} · Ciclo ${esc(a.ciclo || "?")} · ${esc(faseActual(a))} · ${esc(a.docente || "sin docente")} · ${a.unidades || "?"} unidades · ${a.horas_asincronas || "?"} horas asíncronas</div>
@@ -1211,6 +1222,7 @@ function pintarDetalle(){
     ${tarjetaRuta(a, ruta)}
     ${bloqueBitacora(a, !MODO_EQUIPO)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="irA('uni')">← Volver al estado por programa</button>
       <button class="btn sec" onclick="window.print()">Imprimir / PDF</button>
     </div>
   </div>
@@ -1886,6 +1898,8 @@ const MODO_EQUIPO = location.search.indexOf("equipo") >= 0 || location.hash.inde
     if(bi) bi.classList.add("oculto");   // una sola vista: no hace falta la pestaña
     const pill = document.getElementById("pillActualizado");
     if(pill) pill.classList.add("oculto");
+    const cs = document.getElementById("cardSelAsig");
+    if(cs) cs.classList.add("oculto");
   }
   await cargarDatos();
   llenarSelector();
