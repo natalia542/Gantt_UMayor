@@ -259,7 +259,7 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
   <section id="v-det" class="oculto">
     <div class="card" id="cardSelAsig">
       <label>Asignatura</label>
-      <select id="selAsig" onchange="pintarDetalle()"></select>
+      <select id="selAsig" onchange="asigAbierta = this.value; pintarDetalle();"></select>
     </div>
     <div id="detalle"></div>
   </section>
@@ -418,6 +418,7 @@ let CONTRATO = aFechaSegura("2027-01-31");
 let BITACORA = {};
 function aFechaSegura(t){ const p = String(t).split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
 let vistaActual = "uni";
+let asigAbierta = null;   // id de la asignatura que se está mirando
 let feriados = [];
 
 const FERIADOS_DEFECTO = [
@@ -980,7 +981,7 @@ async function cargarDatos(){
       fecha_plan_fin: (pf && pf !== "__ERROR__") ? pf : null,
       fecha_real_inicio: (ri && ri !== "__ERROR__") ? ri : null,
       fecha_real_fin: (rf && rf !== "__ERROR__") ? rf : null,
-      atribuido_a: h.atribuido_a || "", nota: h.nota || "",
+      nota: h.nota || "",
       estado: (h.estado || "").toLowerCase(), causa: h.causa || ""
     };
     (a.fases[fase] = a.fases[fase] || []).push(hito);
@@ -998,7 +999,7 @@ async function cargarDatos(){
       a.hitos = HITOS_BASE.filter(h => h.activo).map(h => Object.assign({
         id: a.id + "-3-" + h.orden, asignatura_id: a.id, fase: "3",
         fecha_plan_inicio:null, fecha_plan_fin:null, fecha_real_inicio:null, fecha_real_fin:null,
-        atribuido_a:"", nota:""
+        nota:"", estado:"", causa:""
       }, h));
       a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3";
     }
@@ -1221,8 +1222,10 @@ function pintarLista(){
 }
 
 function verDetalle(id){
+  asigAbierta = id;
   irA("det");
-  document.getElementById("selAsig").value = id;
+  const sel = document.getElementById("selAsig");
+  if(sel) sel.value = id;
   pintarDetalle();
 }
 
@@ -1232,7 +1235,8 @@ function llenarSelector(){
   s.innerHTML = estado.asignaturas.slice()
     .sort((a,b) => (a.fecha_inicio_clases || "9999").localeCompare(b.fecha_inicio_clases || "9999"))
     .map(a => `<option value="${a.id}">${esc(a.programa)} · ${esc(a.nombre)}</option>`).join("");
-  if(previo && estado.asignaturas.some(a => a.id === previo)) s.value = previo;
+  const quiero = asigAbierta || previo;
+  if(quiero && estado.asignaturas.some(a => a.id === quiero)) s.value = quiero;
 }
 
 /* En qué fase está hoy la asignatura: la primera que tenga etapas sin cerrar */
@@ -1255,7 +1259,11 @@ function nombreFase(clave){
 }
 
 function pintarDetalle(){
-  const id = document.getElementById("selAsig").value;
+  const sel = document.getElementById("selAsig");
+  // El selector manda solo si la usuaria lo cambió; si no, vale la última abierta
+  const id = (sel && sel.value && sel.value !== asigAbierta && MODO_EQUIPO) ? sel.value
+           : (asigAbierta || (sel ? sel.value : ""));
+  asigAbierta = id;
   const a = estado.asignaturas.find(x => x.id === id);
   const cont = document.getElementById("detalle");
   if(!a){ cont.innerHTML = '<div class="card"><div class="vacio">Selecciona una asignatura.</div></div>'; return; }
@@ -1357,7 +1365,7 @@ function tablaHitos(p){
   const h = hoy();
   return `<div class="scroll" style="margin-top:16px">
     <table>
-      <tr><th></th><th>Etapa</th><th>Responsable</th><th>Planificado</th><th>Ocurrió</th><th>Desvío</th><th>Atribuido a</th></tr>
+      <tr><th></th><th>Etapa</th><th>Responsable</th><th>Planificado</th><th>Ocurrió</th><th>Desvío</th></tr>
       ${p.hitos.filter(x => x.activo).map(x => {
         const d = desviacion(x);
         let cls = "", txt = "—";
@@ -1372,7 +1380,6 @@ function tablaHitos(p){
                 ? bonita(aFecha(x.fecha_real_inicio)) + " → " + bonita(aFecha(x.fecha_real_fin))
                 : (vencido ? '<span style="color:var(--rojo)">sin registrar</span>' : "—")}</td>
           <td class="desv ${cls}">${txt}</td>
-          <td>${x.atribuido_a ? esc(x.atribuido_a) : "—"}</td>
         </tr>`;
       }).join("")}
     </table></div>`;
@@ -1547,7 +1554,7 @@ function lineaVertical(p){
       cls = (d !== null && d > 0) ? "tarde" : "hecho";
       pie = `<div class="vreal">Ocurrió: ${bonita(aFecha(x.fecha_real_inicio || x.fecha_real_fin))} → ${bonita(aFecha(x.fecha_real_fin))}
              ${d !== null ? `<span class="desv ${d > 0 ? "pos" : "neg"}">${d > 0 ? "+" : ""}${d} d</span>` : ""}</div>`;
-      if(x.atribuido_a) pie += `<div class="vmeta">Atribuido a ${esc(x.atribuido_a)}${x.nota ? ": " + esc(x.nota) : ""}</div>`;
+      if(x.nota) pie += `<div class="vmeta">${esc(x.nota)}</div>`;
     }else if(x._fin < h){
       cls = "tarde";
       pie = `<div class="vreal" style="color:var(--rojo)">Sin registrar, vencía hace ${diffDias(x._fin, h)} días</div>`;
