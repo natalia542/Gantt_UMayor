@@ -139,6 +139,11 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
 .upunto.r{background:var(--rojo)} .upunto.cerr{background:var(--borde)}
 .unota{font-size:12px;color:var(--muted);margin:3px 0 0 18px;max-width:520px}
 .uleyenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--borde)}
+.bit{margin-top:18px;padding-top:14px;border-top:1px solid var(--borde)}
+.bitem{display:flex;gap:14px;padding:7px 0;font-size:13.5px;align-items:baseline}
+.bitem+.bitem{border-top:1px solid #F1F3F6}
+.bfecha{flex:none;width:88px;color:var(--muted);font-size:12.5px}
+.btexto{color:var(--cuerpo)}
 .ubloque{border-top:1px solid var(--borde);padding:16px 0}
 .ubloque:first-child{border-top:none}
 .ufrase{font-size:13.5px;color:var(--cuerpo);margin-top:2px}
@@ -193,13 +198,14 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
     <div class="card">
       <h2>Estado por programa</h2>
       <div class="desc">Dónde está cada asignatura hoy, quién debe actuar y si va dentro de lo planificado.</div>
-      <div style="max-width:300px;margin-bottom:6px">
-        <label>Programa</label>
-        <select id="fUniCiclo" onchange="pintarUniversidad()" style="margin-bottom:8px"><option value="">Todos los ciclos</option></select>
-        <select id="fUni" onchange="pintarUniversidad()">
-          <option value="">Todos los programas</option>
-          <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
-        </select>
+      <div class="grid g3" style="max-width:620px">
+        <div><label>Ciclo</label>
+          <select id="fUniCiclo" onchange="pintarUniversidad()"><option value="">Todos los ciclos</option></select></div>
+        <div><label>Programa</label>
+          <select id="fUni" onchange="pintarUniversidad()">
+            <option value="">Todos los programas</option>
+            <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
+          </select></div>
       </div>
     </div>
     <div id="universidad"></div>
@@ -384,6 +390,9 @@ let estado = { asignaturas: [], problemas: [], leidoEn: null };
    aprobada por Educación Virtual. Manda el más exigente de los dos techos,
    este o el inicio de clases. */
 let CONTRATO = aFechaSegura("2026-12-31");
+/* Relato cronológico por asignatura. Explica el porqué de los cambios,
+   que es lo que ninguna tabla de desvíos alcanza a decir. */
+let BITACORA = {};
 function aFechaSegura(t){ const p = String(t).split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
 let vistaActual = "uni";
 let feriados = [];
@@ -396,35 +405,74 @@ const FERIADOS_DEFECTO = [
 
 /* Marca de avance por asignatura: evita registrar hito por hito.
    Todo lo anterior a la etapa marcada se considera hecho en fecha. */
-const ALCANZADA = {
-  "sin iniciar": 0,
-  "recursos enviados al docente": 1,
-  "docente revisó": 2,
-  "reunión hecha": 3,
-  "montado en blackboard": 5,
-  "qa recibido": 6,
-  "ajustes post-qa hechos": 7,
-  "cerrada": 8
-};
+/* Nomenclatura oficial de la planilla base. Cada etapa indica en qué fase
+   está la asignatura y qué orden ya quedó atrás dentro de esa fase.
+   Se compara sin tildes ni mayúsculas para tolerar variaciones de tipeo. */
+const MAPA_ETAPAS = [
+  // Fase 2 · Guionización
+  {t:"guionizacion hackea",                 fase:"2", hasta:0},
+  {t:"envio de guiones al docente",         fase:"2", hasta:2},
+  {t:"en revision de guiones (docente)",    fase:"2", hasta:2},
+  {t:"en revision de guiones (prof)",       fase:"2", hasta:2},
+  {t:"reunion 3",                           fase:"2", hasta:3},
+  {t:"ajustes de guiones hackea",           fase:"2", hasta:4},
+  {t:"ajustes hackea - guionizacion",       fase:"2", hasta:4},
+  // Fase 3 · Producción de recursos
+  {t:"diseno multimedia",                   fase:"3", hasta:0},
+  {t:"diseno y multimedia - produccion",    fase:"3", hasta:0},
+  {t:"envio de recursos al docente",        fase:"3", hasta:1},
+  {t:"en revision de recursos (docente)",   fase:"3", hasta:2},
+  {t:"en revision de recursos (prof)",      fase:"3", hasta:2},
+  {t:"reunion 4",                           fase:"3", hasta:3},
+  {t:"ajuste de recursos educativos",       fase:"3", hasta:4},
+  {t:"ajustes hackea - recursos",           fase:"3", hasta:4},
+  {t:"montaje de plantilla en blackboard",  fase:"3", hasta:5},
+  {t:"en proceso de montaje",               fase:"3", hasta:5},
+  {t:"qa educacion virtual",                fase:"3", hasta:6},
+  {t:"ajustes qa hackea",                   fase:"3", hasta:7},
+  {t:"revision final u mayor",              fase:"3", hasta:8},
+  {t:"revision final umayor",               fase:"3", hasta:8},
+  {t:"completado",                          fase:"3", hasta:9},
+  {t:"no iniciado",                         fase:"1", hasta:0}
+];
+
+function normalizar(x){
+  return String(x || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[_]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/* Devuelve {fase, hasta} a partir del texto de la etapa. Se busca la
+   coincidencia más larga para que "reunion 4" no gane sobre otra más específica. */
+function interpretarEtapa(txt){
+  const n = normalizar(txt);
+  if(!n) return null;
+  let mejor = null;
+  MAPA_ETAPAS.forEach(m => {
+    if(n.indexOf(m.t) >= 0 && (!mejor || m.t.length > mejor.t.length)) mejor = m;
+  });
+  return mejor ? {fase: mejor.fase, hasta: mejor.hasta, texto: txt} : null;
+}
 
 const ELASTICO = {
   1: {deseado:2, minimo:1, nota:"Envío al docente"},
   2: {deseado:5, minimo:5, nota:"Revisión del docente"},
   3: {deseado:3, minimo:3, nota:"Reunión con el docente"},
+  4: {deseado:5, minimo:2, nota:"Ajuste de recursos producidos"},
   5: {deseado:2, minimo:2, nota:"Montaje en Blackboard"},
   7: {deseado:5, minimo:2, nota:"Ajustes post-QA"}
 };
-const COMPRIMIR = [7, 1];
+const COMPRIMIR = [7, 4, 1];
 
 const HITOS_BASE = [
   {orden:1, nombre:"Envío de recursos al docente",        responsable:"Hackea",           duracion_dias:2, activo:true,  anclado:false},
   {orden:2, nombre:"Revisión de recursos por el docente", responsable:"Docente",          duracion_dias:5, activo:true,  anclado:false},
-  {orden:3, nombre:"Reunión de revisión de recursos",     responsable:"Hackea + Docente", duracion_dias:3, activo:true,  anclado:false},
-  {orden:4, nombre:"Ajustes tras la reunión",             responsable:"Hackea",           duracion_dias:2, activo:false, anclado:false},
-  {orden:5, nombre:"Montaje en Blackboard",               responsable:"Hackea",           duracion_dias:2, activo:true,  anclado:false},
-  {orden:6, nombre:"QA Educación Virtual",                responsable:"Educación Virtual",duracion_dias:10,activo:true,  anclado:true},
-  {orden:7, nombre:"Ajustes post-QA",                     responsable:"Hackea",           duracion_dias:5, activo:true,  anclado:true},
-  {orden:8, nombre:"Revisión en plataforma por el docente",responsable:"Docente",         duracion_dias:5, activo:true,  anclado:true}
+  {orden:3, nombre:"Reunión 4 · revisión de ajustes de recursos", responsable:"Hackea + Docente", duracion_dias:3, activo:true,  anclado:false},
+  {orden:4, nombre:"Ajuste de recursos educativos producidos", responsable:"Hackea",       duracion_dias:5, activo:true,  anclado:false},
+  {orden:5, nombre:"Montaje de plantilla en Blackboard",  responsable:"Hackea",           duracion_dias:2, activo:true,  anclado:false},
+  {orden:6, nombre:"QA Educación Virtual U. Mayor",       responsable:"Educación Virtual",duracion_dias:10,activo:true,  anclado:true},
+  {orden:7, nombre:"Ajustes QA Hackea",                   responsable:"Hackea",           duracion_dias:5, activo:true,  anclado:true},
+  {orden:8, nombre:"Revisión final U. Mayor (Docente)",   responsable:"Docente",          duracion_dias:5, activo:true,  anclado:true}
 ];
 
 /* ═══════════ UTILIDADES DE FECHA ═══════════ */
@@ -646,8 +694,18 @@ function esParcial(h){ return h.estado === "parcial"; }
 function hitoCerrado(h, a){
   if(esParcial(h)) return false;
   if(h.fecha_real_fin) return true;
-  if(a && a.avanceHasta !== undefined && h.orden <= a.avanceHasta) return true;
-  return false;
+  if(!a || a.avanceHasta === undefined) return false;
+  const fh = claveFase(h.fase);
+  // Fases anteriores a la declarada están cerradas por completo
+  if(a.faseDeclarada && fh < a.faseDeclarada) return true;
+  // Fases posteriores no han empezado
+  if(a.faseDeclarada && fh > a.faseDeclarada) return false;
+  return h.orden <= a.avanceHasta;
+}
+
+/* Una fase todavía no comienza si la asignatura está en una fase anterior */
+function faseNoIniciada(a, claveF){
+  return !!(a.faseDeclarada && claveFase(claveF) > a.faseDeclarada);
 }
 
 function desviacion(h){
@@ -728,6 +786,7 @@ async function cargarDatos(){
   feriados = FERIADOS_DEFECTO.slice();
   if(!HAY_SHEET){ modoDemostracion(); return; }
 
+  BITACORA = {};
   const problemas = [];
   const anota = (donde, fila, msg) => problemas.push({donde, fila, msg});
 
@@ -736,6 +795,19 @@ async function cargarDatos(){
     ruta  = await traer("RUTA");
     hitos = await traer("HITOS");
     try{ fer = await traer("FERIADOS"); }catch(e){ fer = []; }
+    try{
+      const bit = await traer("BITACORA");
+      bit.forEach(b => {
+        const f = leerFecha(b.fecha);
+        if(!b.id_asignatura || !b.que_paso) return;
+        (BITACORA[b.id_asignatura] = BITACORA[b.id_asignatura] || []).push({
+          fecha: (f && f !== "__ERROR__") ? f : null,
+          texto: b.que_paso,
+          visible: normalizar(b.visible) !== "no"
+        });
+      });
+      Object.keys(BITACORA).forEach(k => BITACORA[k].sort((x,y) => (x.fecha||"").localeCompare(y.fecha||"")));
+    }catch(e){}
     try{
       const cfg = await traer("CONFIG");
       cfg.forEach(c => {
@@ -790,6 +862,7 @@ async function cargarDatos(){
       plan_manual: modo === "acordado", etapa: f.etapa || "", comentario: f.comentario || "",
       bloqueos: leerBloqueos(f.bloqueos_docente),
       etapa_alcanzada: (f.etapa_alcanzada || "").trim(),
+      etapa_texto: (f.etapa || "").trim(),
       inicio_original: (function(){ const x = leerFecha(f.inicio_original); return (x && x !== "__ERROR__") ? x : null; })(),
       motivo_cambio: f.motivo_cambio || "",
       modo_calendario: "habiles", dias_revision_plataforma: 5, dias_ajustes_qa: 5, dias_qa: 10,
@@ -867,11 +940,18 @@ async function cargarDatos(){
     if(v > 1){ x.fila = x.fila + " y " + (v-1) + " fila(s) más"; }
   });
 
-  // La marca de avance completa lo que no se registró hito por hito
+  /* La etapa declarada completa lo que no se registró hito por hito.
+     Se prefiere la columna etapa (nomenclatura oficial); si no viene,
+     se usa etapa_alcanzada. */
   asignaturas.forEach(a => {
-    const tope = ALCANZADA[(a.etapa_alcanzada || "").toLowerCase()];
-    if(tope === undefined) return;
-    a.avanceHasta = tope;
+    const m = interpretarEtapa(a.etapa_texto) || interpretarEtapa(a.etapa_alcanzada);
+    if(!m){
+      if(a.etapa_texto) anota("RUTA", "—", "La etapa «" + a.etapa_texto + "» de «" + a.nombre + "» no está en la lista conocida. La asignatura se muestra sin avance.");
+      return;
+    }
+    a.faseDeclarada = m.fase;
+    a.avanceHasta = m.hasta;
+    a.etapaTexto = m.texto;
   });
 
   estado.asignaturas = asignaturas;
@@ -921,7 +1001,9 @@ function calcularAlertas(){
       else if(p.holgura <= 4) plan.push({a, nivel:"a", msg:"Solo " + p.holgura + " días de margen entre el cierre del proceso y la fecha límite."});
     }
     // Una asignatura genera una sola alerta de vencimiento: la más antigua
-    const atrasadas = p.hitos.filter(x => x.activo && x._fin && x._fin < h && !hitoCerrado(x, a));
+    const atrasadas = (a.faseDeclarada && a.faseDeclarada < "3")
+      ? []
+      : p.hitos.filter(x => x.activo && x._fin && x._fin < h && !hitoCerrado(x, a));
     if(atrasadas.length){
       const x = atrasadas[0];
       vencidas.push({a, hito:x, dias: diffDias(x._fin, h), cuantas: atrasadas.length});
@@ -984,7 +1066,7 @@ function pintarLista(){
   const fc = valorFiltro("fCiclo");
   const cont = document.getElementById("lista");
   if(!estado.asignaturas.length){
-    cont.innerHTML = '<div class="vacio">No hay asignaturas cargadas. Revisa la pestaña de alertas.</div>';
+    cont.innerHTML = '<div class="vacio">No se cargó ninguna asignatura. Revisa la pestaña de alertas para ver qué falló al leer la planilla.</div>';
     return;
   }
   const filas = estado.asignaturas.slice()
@@ -1010,7 +1092,7 @@ function pintarLista(){
       <span class="tag azul">${esc(a.programa)}</span>
       <span class="tag">Ciclo ${esc(a.ciclo || "?")}</span>
       <span class="tag">${esc(faseActual(a))}</span>
-      ${a.etapa_alcanzada ? `<span class="tag">${esc(a.etapa_alcanzada)}</span>` : ""}
+      ${a.etapaTexto ? `<span class="tag">${esc(recortar(a.etapaTexto, 30))}</span>` : ""}
       ${p.manual ? '<span class="tag">Plan acordado</span>' : ""}
       ${(p.recortes && p.recortes.length) ? '<span class="tag" style="border-color:var(--rojo);color:var(--rojo)">Comprimido</span>' : ""}
       <span class="tag">Al docente ${bonita(p.partida)}</span>
@@ -1038,6 +1120,7 @@ function llenarSelector(){
 
 /* En qué fase está hoy la asignatura: la primera que tenga etapas sin cerrar */
 function faseActual(a){
+  if(a.faseDeclarada) return "Fase " + a.faseDeclarada;
   const claves = (a.listaFases || []).slice().sort();
   for(const c of claves){
     const hs = a.fases[c] || [];
@@ -1126,6 +1209,7 @@ function pintarDetalle(){
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
     ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
     ${tarjetaRuta(a, ruta)}
+    ${bloqueBitacora(a, !MODO_EQUIPO)}
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn sec" onclick="window.print()">Imprimir / PDF</button>
     </div>
@@ -1449,6 +1533,18 @@ function proyectarCierre(a, envioRecursos){
   return {cierre: fin, inicioPosible: masDias(fin, 7)};
 }
 
+function bloqueBitacora(a, soloVisibles){
+  const b = (BITACORA[a.id] || []).filter(x => !soloVisibles || x.visible);
+  if(!b.length) return "";
+  return `<div class="bit">
+    <h3 style="font-size:14px;margin-bottom:8px">Qué ha pasado</h3>
+    ${b.map(x => `<div class="bitem">
+      <span class="bfecha">${x.fecha ? bonita(aFecha(x.fecha)) : "—"}</span>
+      <span class="btexto">${esc(x.texto)}${(!soloVisibles && !x.visible) ? ' <span class="tag" style="border-color:var(--ambar);color:#7A4E00">interna</span>' : ""}</span>
+    </div>`).join("")}
+  </div>`;
+}
+
 function tarjetaRuta(a, ruta){
   const filas = [
     {k:"1", n:"Contenido al docente", fecha:a.fecha_envio_contenido, prop:null},
@@ -1613,7 +1709,21 @@ function pintarUniversidad(){
   const datos = estado.asignaturas
     .filter(a => (!filtro || a.programa === filtro) && (!fc || String(a.ciclo).trim() === fc))
     .sort((a,b) => (a.programa + (a.fecha_inicio_clases || "9999")).localeCompare(b.programa + (b.fecha_inicio_clases || "9999")));
-  if(!datos.length){ cont.innerHTML = '<div class="card"><div class="vacio">Sin asignaturas para ese filtro.</div></div>'; return; }
+  if(!datos.length){
+    if(!estado.asignaturas.length){
+      const det = estado.problemas.length
+        ? estado.problemas.map(x => "<li>" + esc(x.donde) + (x.fila && x.fila !== "—" ? ", fila " + esc(String(x.fila)) : "") + ": " + esc(x.msg) + "</li>").join("")
+        : "<li>La planilla respondió vacía.</li>";
+      cont.innerHTML = `<div class="card"><div class="aviso alerta">
+        <b>No se cargó ninguna asignatura.</b> La herramienta no pudo leer la planilla.
+        <ul style="margin:8px 0 0 18px;padding:0">${det}</ul>
+        <div style="margin-top:10px;font-size:13px">Si estás abriendo el archivo desde tu computador, ábrelo desde la dirección publicada: el navegador bloquea la lectura en archivos locales.</div>
+      </div></div>`;
+    }else{
+      cont.innerHTML = '<div class="card"><div class="vacio">Ninguna asignatura cumple ese filtro. Prueba con «Todos los ciclos» y «Todos los programas».</div></div>';
+    }
+    return;
+  }
 
   const ultimo = ultimoRegistro();
   const dias = ultimo ? diffDias(aFecha(ultimo), hoy()) : null;
@@ -1636,10 +1746,17 @@ function pintarUniversidad(){
       const x = sit.pendiente;
 
       const enClases = p.inicioClases && p.inicioClases <= hoyF && !sit.cerrado;
+      const previa = a.faseDeclarada && a.faseDeclarada < "3";
       let punto = "v", hasta = "—", quien = "—", etapa = "—";
-      if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
+      if(previa){
+        etapa = a.etapaTexto || "En fases previas";
+        quien = (a.etapaTexto || "").toLowerCase().indexOf("docente") >= 0 ? "<b>" + esc(a.docente || "El docente") + "</b>" : "Hackea";
+        hasta = "producción aún no comienza";
+        punto = "a";
+      }
+      else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
       else if(x){
-        etapa = x.nombre;
+        etapa = a.etapaTexto || x.nombre;
         hasta = bonita(x._fin);
         if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
         else if(x.responsable.indexOf("Docente") >= 0) quien = "<b>" + esc(a.docente || "El docente") + "</b>";
@@ -1651,7 +1768,12 @@ function pintarUniversidad(){
 
       // Nota visible solo cuando aporta: atraso, entrega parcial o replanificación
       const notas = [];
-      if(a.inicio_original && a.motivo_cambio)
+      const bit = (BITACORA[a.id] || []).filter(x => MODO_EQUIPO || x.visible);
+      if(bit.length){
+        const u = bit[bit.length-1];
+        notas.push((u.fecha ? bonita(aFecha(u.fecha)) + " — " : "") + esc(u.texto));
+      }
+      if(!bit.length && a.inicio_original && a.motivo_cambio)
         notas.push("Fecha de inicio replanificada desde el " + bonita(aFecha(a.inicio_original)) + ". " + esc(a.motivo_cambio));
       p.hitos.filter(h => h.activo && h.nota && (esParcial(h) || (desviacion(h) || 0) > 0))
              .forEach(h => notas.push(esc(h.nota)));
