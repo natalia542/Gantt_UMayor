@@ -2001,18 +2001,18 @@ function pintarUniversidad(){
         // La etapa y la fecha salen de la fase en curso, no de la de producción
         const cl = a.listaFases.filter(c => claveFase(c) === a.faseDeclarada)[0];
         const hs = cl ? a.fases[cl] : null;
-        let x2 = null;
+        let x2 = null, listaFase = [];
         if(hs){
           const pf = (rutaCompleta(a).fases[a.faseDeclarada]) || null;
-          const lista = (pf && pf.hitos) ? pf.hitos : hs;
-          x2 = lista.slice().sort((u,v) => u.orden - v.orden).filter(u => !hitoCerrado(u, a))[0];
+          listaFase = (pf && pf.hitos) ? pf.hitos : hs;
+          x2 = listaFase.slice().sort((u,v) => u.orden - v.orden).filter(u => !hitoCerrado(u, a))[0];
         }
         if(x2){
           etapa = tituloEtapa(x2);
           if(x2._fin) hasta = bonita(x2._fin);
           else {
             // Etapa sin plazo comprometido: se muestra el siguiente hito con fecha
-            const sig = (lista || []).slice().sort((u,v) => u.orden - v.orden)
+            const sig = listaFase.slice().sort((u,v) => u.orden - v.orden)
                           .filter(u => u.orden > x2.orden && u._fin)[0];
             hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
           }
