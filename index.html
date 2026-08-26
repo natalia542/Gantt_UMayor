@@ -798,9 +798,11 @@ function desviacion(h){
 
 
 /* ═══════════ LECTURA DE LA PLANILLA ═══════════ */
-function urlPestana(nombre){
-  return "https://docs.google.com/spreadsheets/d/" + SHEET_ID +
-         "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(nombre);
+function urlPestana(nombre, via){
+  const base = "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(nombre);
+  // Una consulta explícita a veces recorre los datos y no la vista filtrada
+  if(via === 1) return base + "&tq=" + encodeURIComponent("select *");
+  return base;
 }
 
 // Divide una línea CSV respetando comillas y comas dentro de un campo
@@ -858,10 +860,20 @@ function leerBloqueos(v){
   }).filter(Boolean);
 }
 
+/* Se piden las dos variantes y se conserva la que traiga más filas: si hay un
+   filtro puesto, alguna de las dos puede devolver los datos completos. */
 async function traer(pestana){
-  const r = await fetch(urlPestana(pestana));
-  if(!r.ok) throw new Error("La pestaña " + pestana + " no respondió (" + r.status + "). Revisa que la planilla esté compartida con enlace de lectura.");
-  return aObjetos(partirCSV(await r.text()));
+  let mejor = null, err = null;
+  for(const via of [0, 1]){
+    try{
+      const r = await fetch(urlPestana(pestana, via));
+      if(!r.ok){ err = new Error("La pestaña " + pestana + " no respondió (" + r.status + "). Revisa que la planilla esté compartida con enlace de lectura."); continue; }
+      const filas = aObjetos(partirCSV(await r.text()));
+      if(!mejor || filas.length > mejor.length) mejor = filas;
+    }catch(e){ err = e; }
+  }
+  if(!mejor){ throw err || new Error("No se pudo leer la pestaña " + pestana + "."); }
+  return mejor;
 }
 
 async function cargarDatos(){
@@ -1001,7 +1013,7 @@ async function cargarDatos(){
         fecha_plan_inicio:null, fecha_plan_fin:null, fecha_real_inicio:null, fecha_real_fin:null,
         nota:"", estado:"", causa:""
       }, h));
-      a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3";
+      a.fases["3"] = a.hitos; a.listaFases = ["3"]; a.faseProduccion = "3"; a.sinHitos = true;
     }
     // Gatillo en la columna que no corresponde a la fase declarada
     if(a.faseDeclarada){
@@ -1021,6 +1033,19 @@ async function cargarDatos(){
       if(faltan.length) anota("HITOS", "—", "«" + a.nombre + "» está en modo acordado pero le faltan fechas planificadas en " + faltan.length + " etapa(s). Esas etapas no se dibujan.");
     }
   });
+
+  /* Si HITOS trae muchas menos asignaturas que RUTA, casi siempre es un filtro
+     activo en la planilla y no datos faltantes. Se dice una vez y se omiten
+     los errores derivados, que solo confunden. */
+  const conHitos = asignaturas.filter(a => !a.sinHitos).length;
+  if(asignaturas.length >= 4 && conHitos <= asignaturas.length * 0.6){
+    const sinDatos = asignaturas.length - conHitos;
+    problemas.length = 0;
+    problemas.push({donde:"HITOS", fila:"—",
+      msg:"Parece que hay un filtro activo en la pestaña HITOS: solo se leyeron las etapas de " + conHitos +
+          " de " + asignaturas.length + " asignaturas, y a " + sinDatos + " no les llegó ninguna. " +
+          "Abre la planilla, ve a HITOS y quita el filtro (Datos → Quitar filtro). Para filtrar sin afectar la herramienta, usa Datos → Vistas de filtro."});
+  }
 
   // Un mismo error repetido en muchas filas se muestra una sola vez
   const vistos = {};
