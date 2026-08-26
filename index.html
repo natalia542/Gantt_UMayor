@@ -229,6 +229,14 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
             <option value="">Todos los programas</option>
             <option>MBA</option><option>MCG</option><option>MCEE</option><option>OPT</option>
           </select></div>
+        <div><label>Qué mostrar</label>
+          <select id="fUniPlazo" onchange="pintarUniversidad()">
+            <option value="">Todo, agrupado por programa</option>
+            <option value="7">Lo que vence esta semana</option>
+            <option value="15">Próximos 15 días</option>
+            <option value="30">Próximos 30 días</option>
+            <option value="atraso">Solo lo que está con atraso</option>
+          </select></div>
       </div>
     </div>
     <div id="universidad"></div>
@@ -251,6 +259,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
             <option value="a">Al límite</option><option value="v">Con holgura</option>
             <option value="g">Sin fecha de envío</option>
           </select></div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn sec" onclick="copiarFechas()">Copiar fechas planificadas</button></div>
       </div>
       <div id="lista"></div>
     </div>
@@ -985,6 +995,7 @@ async function cargarDatos(){
 
     const fase = (h.fase || "3").trim();
     const hito = {
+      _fila: h._fila,
       id: a.id + "-" + fase + "-" + n, asignatura_id: a.id, fase: fase, orden: n,
       nombre: h.hito || base.nombre || ("Etapa " + n),
       responsable: h.responsable || base.responsable || "Hackea",
@@ -1085,6 +1096,55 @@ function modoDemostracion(){
   estado.problemas = [{donde:"Configuración", fila:"",
     msg:"Todavía no está conectada la planilla. Hay que pegar el ID de Google Sheets al inicio del archivo index.html."}];
   estado.leidoEn = null;
+}
+
+/* Devuelve las fechas planificadas en el mismo orden de filas de HITOS,
+   listas para pegar en las columnas plan_inicio y plan_fin. */
+function fechasParaPegar(){
+  const porFila = {};
+  let maxFila = 1;
+  estado.asignaturas.forEach(a => {
+    const r = rutaCompleta(a);
+    (a.listaFases || []).forEach(cl => {
+      const k = claveFase(cl);
+      let p;
+      if(k === "3") p = planificar(a);
+      else p = r.fases[k];
+      const hitos = (p && p.hitos) ? p.hitos : (a.fases[cl] || []);
+      hitos.forEach(h => {
+        if(h._fila === undefined) return;
+        if(h._fila > maxFila) maxFila = h._fila;
+        // Nunca se borra lo que ya está escrito: si hay fecha en la planilla, se conserva
+        porFila[h._fila] = [
+          h.fecha_plan_inicio || (h._ini ? aTexto(h._ini) : ""),
+          h.fecha_plan_fin    || (h._fin ? aTexto(h._fin) : "")
+        ];
+      });
+    });
+  });
+  const filas = [];
+  let conFecha = 0;
+  for(let i = 2; i <= maxFila; i++){
+    const v = porFila[i] || ["", ""];
+    if(v[0] || v[1]) conFecha++;
+    filas.push(v[0] + "\t" + v[1]);
+  }
+  return {texto: filas.join("\n"), filas: filas.length, conFecha: conFecha};
+}
+
+async function copiarFechas(){
+  const r = fechasParaPegar();
+  const txt = r.texto;
+  try{
+    await navigator.clipboard.writeText(txt);
+    avisar(r.conFecha + " filas con fecha, de " + r.filas + ". Pega en plan_inicio, fila 2 de HITOS. Quita el filtro antes de pegar.");
+  }catch(e){
+    const ta = document.createElement("textarea");
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); avisar(r.conFecha + " filas con fecha. Pega en plan_inicio, fila 2 de HITOS."); }
+    catch(e2){ avisar("No se pudo copiar automáticamente. Revisa la consola del navegador."); console.log(txt); }
+    document.body.removeChild(ta);
+  }
 }
 
 /* ═══════════ ALERTAS ═══════════ */
@@ -1930,6 +1990,96 @@ function fraseUniversidad(a, p, sit){
   return f + clases;
 }
 
+/* Estado de una asignatura para las vistas de tabla: etapa en curso, quién
+   responde, hasta cuándo y la fecha que ordena cronológicamente. */
+function estadoFila(a, hoyF){
+  const p = planificar(a);
+  const sit = situacion(p, a);
+  const x = sit.pendiente;
+  const enClases = p.inicioClases && p.inicioClases <= hoyF && !sit.cerrado;
+  const previa = a.faseDeclarada && a.faseDeclarada < "3";
+  let punto = "v", hasta = "—", quien = "—", etapa = "—", fechaOrden = null, atraso = 0;
+
+  if(previa){
+    const cl = a.listaFases.filter(c => claveFase(c) === a.faseDeclarada)[0];
+    const hs = cl ? a.fases[cl] : null;
+    let x2 = null, listaFase = [];
+    if(hs){
+      const pf = (rutaCompleta(a).fases[a.faseDeclarada]) || null;
+      listaFase = (pf && pf.hitos) ? pf.hitos : hs;
+      x2 = listaFase.slice().sort((u,v) => u.orden - v.orden).filter(u => !hitoCerrado(u, a))[0];
+    }
+    if(x2){
+      etapa = tituloEtapa(x2);
+      if(x2._fin){ hasta = bonita(x2._fin); fechaOrden = x2._fin; }
+      else {
+        const sig = listaFase.slice().sort((u,v) => u.orden - v.orden)
+                      .filter(u => u.orden > x2.orden && u._fin)[0];
+        hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
+        if(sig) fechaOrden = sig._ini;
+      }
+      if(x2.responsable.indexOf("Docente") >= 0 && x2.responsable.indexOf("Hackea") < 0) quien = esc(a.docente || "El docente");
+      else if(x2.responsable.indexOf("Docente") >= 0) quien = "Hackea y " + esc((a.docente || "el docente").split(" ")[0]);
+      else quien = "Hackea";
+      punto = (x2.responsable.indexOf("Hackea") >= 0) ? "v" : "a";
+      if(x2._fin && x2._fin < hoyF && !hitoCerrado(x2, a)){
+        punto = "r"; atraso = diffDias(x2._fin, hoyF);
+        hasta = bonita(x2._fin) + ' · <b style="color:var(--rojo)">' + atraso + " días de atraso</b>";
+      }
+    }else{
+      etapa = tituloEtapa({fase:a.faseDeclarada, orden:1, nombre:a.etapaTexto || ""});
+      hasta = "por definir"; punto = "a";
+    }
+  }
+  else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
+  else if(x){
+    etapa = tituloEtapa(x);
+    if(x._fin){ hasta = bonita(x._fin); fechaOrden = x._fin; }
+    else {
+      const sig = p.hitos.slice().sort((u,v) => u.orden - v.orden)
+                    .filter(u => u.activo && u.orden > x.orden && u._fin)[0];
+      hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
+      if(sig) fechaOrden = sig._ini;
+    }
+    if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
+    else if(x.responsable.indexOf("Docente") >= 0) quien = esc(a.docente || "El docente");
+    else quien = "Hackea";
+    if(sit.tarde){ punto = "r"; atraso = sit.retraso; hasta = bonita(x._fin) + ' · <b style="color:var(--rojo)">' + sit.retraso + " días de atraso</b>"; }
+    else if(x.responsable.indexOf("Hackea") < 0) punto = "a";
+    if(esParcial(x)) hasta += ' · <span style="color:var(--ambar)">entrega parcial</span>';
+  }
+
+  const notas = [];
+  const bit = (BITACORA[a.id] || []).filter(z => MODO_EQUIPO || z.visible);
+  if(bit.length){
+    const u = bit[bit.length-1];
+    notas.push((u.fecha ? bonita(aFecha(u.fecha)) + " — " : "") + esc(u.texto));
+  }
+  if(!bit.length && a.inicio_original && a.motivo_cambio)
+    notas.push("Fecha de inicio replanificada desde el " + bonita(aFecha(a.inicio_original)) + ". " + esc(a.motivo_cambio));
+  p.hitos.filter(h => h.activo && h.nota && (esParcial(h) || (desviacion(h) || 0) > 0))
+         .forEach(h => notas.push(esc(h.nota)));
+
+  return {p, sit, punto, hasta, quien, etapa, notas, enClases, fechaOrden, atraso, cerrada: sit.cerrado};
+}
+
+/* Una fila de la tabla. `conPrograma` agrega la columna de programa para la
+   vista cronológica, donde las asignaturas vienen mezcladas. */
+function filaAsignatura(a, e, conPrograma){
+  return `<tr class="ufila"${e.enClases ? ' style="background:#FFF8E6"' : ""}>
+    <td><span class="upunto ${e.punto}"></span>${esc(a.nombre)}
+      ${conPrograma ? `<span class="tag azul" style="margin-left:8px">${esc(a.programa)}</span>` : ""}
+      ${e.enClases ? '<span class="tag" style="margin-left:8px;border-color:var(--ambar);color:#7A4E00">Clases en curso</span>' : ""}
+      <div class="unota">${esc(a.docente || "Sin docente asignado")}${e.notas.length ? " · " + e.notas.join(" · ") : ""}</div></td>
+    <td class="ufase"><span class="fnum">${esc(a.faseDeclarada || "?")}</span>${esc(NOMBRE_FASE[a.faseDeclarada] || "")}</td>
+    <td class="usec">${esc(e.etapa)}</td>
+    <td>${e.quien}</td>
+    <td>${e.hasta}</td>
+    <td class="usec">${e.p.inicioClases ? bonita(e.p.inicioClases) : "por confirmar"}</td>
+    <td style="text-align:right"><button class="btn mini sec" onclick="verDetalle('${a.id}')">Ver</button></td>
+  </tr>`;
+}
+
 function pintarUniversidad(){
   const filtro = valorFiltro("fUni");
   const fc = valorFiltro("fUniCiclo");
@@ -1955,6 +2105,47 @@ function pintarUniversidad(){
 
   const ultimo = ultimoRegistro();
   const dias = ultimo ? diffDias(aFecha(ultimo), hoy()) : null;
+  const hoyF0 = hoy();
+  const plazo = valorFiltro("fUniPlazo");
+
+  /* Vista cronológica: cuando importa cuándo vence, no de qué programa es.
+     Las asignaturas se mezclan y se ordenan por fecha. */
+  if(plazo){
+    const filas = datos.map(a => ({a, e: estadoFila(a, hoyF0)}))
+      .filter(x => !x.e.cerrada)
+      .filter(x => {
+        if(plazo === "atraso") return x.e.atraso > 0;
+        if(!x.e.fechaOrden) return false;
+        const d = diffDias(hoyF0, x.e.fechaOrden);
+        return d <= parseInt(plazo, 10);
+      })
+      .sort((x,y) => {
+        if(x.e.atraso !== y.e.atraso) return y.e.atraso - x.e.atraso;
+        if(!x.e.fechaOrden) return 1;
+        if(!y.e.fechaOrden) return -1;
+        return x.e.fechaOrden - y.e.fechaOrden;
+      });
+
+    const titulo = plazo === "atraso" ? "Con atraso"
+                 : plazo === "7" ? "Vence esta semana"
+                 : "Próximos " + plazo + " días";
+
+    cont.innerHTML = `<div class="card">
+      <h2>${titulo}</h2>
+      <div class="desc">${filas.length ? filas.length + " asignatura(s), ordenadas por la fecha más próxima." : ""}${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
+      ${filas.length ? `<div class="scroll"><table class="utabla">
+        <tr><th>Asignatura</th><th>Fase</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
+        ${filas.map(x => filaAsignatura(x.a, x.e, true)).join("")}
+      </table></div>` : `<div class="vacio">${plazo === "atraso" ? "Ninguna asignatura está con atraso." : "Nada vence en ese plazo."}</div>`}
+      <div class="uleyenda">
+        <span><i class="upunto v"></i>Al día, en Hackea</span>
+        <span><i class="upunto a"></i>Esperando al docente o a Educación Virtual</span>
+        <span><i class="upunto r"></i>Con atraso</span>
+      </div>
+    </div>`;
+    return;
+  }
+
   const programas = [];
   datos.forEach(a => { if(programas.indexOf(a.programa) < 0) programas.push(a.programa); });
 
@@ -1990,88 +2181,9 @@ function pintarUniversidad(){
         <div class="ucerradas">${cerradas.map(a => esc(a.nombre)).join(" · ")}</div></div>`;
     }
     const filas = grupo.map(a => {
-      const p = planificar(a);
-      const sit = situacion(p, a);
-      const x = sit.pendiente;
-
-      const enClases = p.inicioClases && p.inicioClases <= hoyF && !sit.cerrado;
-      const previa = a.faseDeclarada && a.faseDeclarada < "3";
-      let punto = "v", hasta = "—", quien = "—", etapa = "—";
-      if(previa){
-        // La etapa y la fecha salen de la fase en curso, no de la de producción
-        const cl = a.listaFases.filter(c => claveFase(c) === a.faseDeclarada)[0];
-        const hs = cl ? a.fases[cl] : null;
-        let x2 = null, listaFase = [];
-        if(hs){
-          const pf = (rutaCompleta(a).fases[a.faseDeclarada]) || null;
-          listaFase = (pf && pf.hitos) ? pf.hitos : hs;
-          x2 = listaFase.slice().sort((u,v) => u.orden - v.orden).filter(u => !hitoCerrado(u, a))[0];
-        }
-        if(x2){
-          etapa = tituloEtapa(x2);
-          if(x2._fin) hasta = bonita(x2._fin);
-          else {
-            // Etapa sin plazo comprometido: se muestra el siguiente hito con fecha
-            const sig = listaFase.slice().sort((u,v) => u.orden - v.orden)
-                          .filter(u => u.orden > x2.orden && u._fin)[0];
-            hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
-          }
-          if(x2.responsable.indexOf("Docente") >= 0 && x2.responsable.indexOf("Hackea") < 0)
-            quien = "<b>" + esc(a.docente || "El docente") + "</b>";
-          else if(x2.responsable.indexOf("Docente") >= 0) quien = "Hackea y " + esc((a.docente || "el docente").split(" ")[0]);
-          else quien = "Hackea";
-          punto = (x2.responsable.indexOf("Hackea") >= 0) ? "v" : "a";
-          if(x2._fin && x2._fin < hoyF && !hitoCerrado(x2, a)){
-            punto = "r";
-            hasta = bonita(x2._fin) + ' · <b style="color:var(--rojo)">' + diffDias(x2._fin, hoyF) + " días de atraso</b>";
-          }
-        }else{
-          etapa = tituloEtapa({fase:a.faseDeclarada, orden:1, nombre:a.etapaTexto || ""});
-          hasta = "por definir";
-          punto = "a";
-        }
-      }
-      else if(sit.cerrado){ punto = "cerr"; etapa = "Cerrada"; }
-      else if(x){
-        etapa = tituloEtapa(x);
-        if(x._fin) hasta = bonita(x._fin);
-        else {
-          const sig = p.hitos.slice().sort((u,v) => u.orden - v.orden)
-                        .filter(u => u.activo && u.orden > x.orden && u._fin)[0];
-          hasta = sig ? "el " + bonita(sig._ini) + " " + tituloEtapa(sig).toLowerCase() : "por definir";
-        }
-        if(x.responsable.indexOf("Educación") >= 0) quien = "Educación Virtual";
-        else if(x.responsable.indexOf("Docente") >= 0) quien = "<b>" + esc(a.docente || "El docente") + "</b>";
-        else quien = "Hackea";
-        if(sit.tarde){ punto = "r"; hasta = bonita(x._fin) + ' · <b style="color:var(--rojo)">' + sit.retraso + " días de atraso</b>"; }
-        else if(x.responsable.indexOf("Hackea") < 0) punto = "a";
-        if(esParcial(x)) hasta += ' · <span style="color:var(--ambar)">entrega parcial</span>';
-      }
-
-      // Nota visible solo cuando aporta: atraso, entrega parcial o replanificación
-      const notas = [];
-      const bit = (BITACORA[a.id] || []).filter(x => MODO_EQUIPO || x.visible);
-      if(bit.length){
-        const u = bit[bit.length-1];
-        notas.push((u.fecha ? bonita(aFecha(u.fecha)) + " — " : "") + esc(u.texto));
-      }
-      if(!bit.length && a.inicio_original && a.motivo_cambio)
-        notas.push("Fecha de inicio replanificada desde el " + bonita(aFecha(a.inicio_original)) + ". " + esc(a.motivo_cambio));
-      p.hitos.filter(h => h.activo && h.nota && (esParcial(h) || (desviacion(h) || 0) > 0))
-             .forEach(h => notas.push(esc(h.nota)));
-
-      if(enClases) notasClase = true;
-      return `<tr class="ufila"${enClases ? ' style="background:#FFF8E6"' : ""}>
-        <td><span class="upunto ${punto}"></span>${esc(a.nombre)}
-          ${enClases ? '<span class="tag" style="margin-left:8px;border-color:var(--ambar);color:#7A4E00">Clases en curso</span>' : ""}
-          ${notas.length ? `<div class="unota">${notas.join(" · ")}</div>` : ""}</td>
-        <td class="ufase"><span class="fnum">${esc(a.faseDeclarada || "?")}</span>${esc(NOMBRE_FASE[a.faseDeclarada] || "")}</td>
-        <td class="usec">${esc(etapa)}</td>
-        <td>${quien}</td>
-        <td>${hasta}</td>
-        <td class="usec">${p.inicioClases ? bonita(p.inicioClases) : "por confirmar"}</td>
-        <td style="text-align:right"><button class="btn mini sec" onclick="verDetalle('${a.id}')">Ver</button></td>
-      </tr>`;
+      const e = estadoFila(a, hoyF);
+      if(e.enClases) notasClase = true;
+      return filaAsignatura(a, e, false);
     }).join("");
 
     return `<div class="card">
