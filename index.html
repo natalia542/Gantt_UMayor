@@ -236,6 +236,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:20px}
             <option value="15">Próximos 15 días</option>
             <option value="30">Próximos 30 días</option>
             <option value="atraso">Solo lo que está con atraso</option>
+            <option value="inicia30">Cursos que parten en el próximo mes</option>
+            <option value="inicia60">Cursos que parten en dos meses</option>
           </select></div>
       </div>
     </div>
@@ -2111,15 +2113,23 @@ function pintarUniversidad(){
   /* Vista cronológica: cuando importa cuándo vence, no de qué programa es.
      Las asignaturas se mezclan y se ordenan por fecha. */
   if(plazo){
+    // Las vistas "inicia" ordenan por fecha de inicio de clases, no por vencimiento
+    const porInicio = plazo.indexOf("inicia") === 0;
     const filas = datos.map(a => ({a, e: estadoFila(a, hoyF0)}))
-      .filter(x => !x.e.cerrada)
+      .filter(x => porInicio || !x.e.cerrada)
       .filter(x => {
         if(plazo === "atraso") return x.e.atraso > 0;
+        if(porInicio){
+          if(!x.e.p.inicioClases) return false;
+          const d = diffDias(hoyF0, x.e.p.inicioClases);
+          return d >= 0 && d <= parseInt(plazo.replace("inicia",""), 10);
+        }
         if(!x.e.fechaOrden) return false;
         const d = diffDias(hoyF0, x.e.fechaOrden);
         return d <= parseInt(plazo, 10);
       })
       .sort((x,y) => {
+        if(porInicio) return x.e.p.inicioClases - y.e.p.inicioClases;
         if(x.e.atraso !== y.e.atraso) return y.e.atraso - x.e.atraso;
         if(!x.e.fechaOrden) return 1;
         if(!y.e.fechaOrden) return -1;
@@ -2127,14 +2137,17 @@ function pintarUniversidad(){
       });
 
     const titulo = plazo === "atraso" ? "Con atraso"
+                 : plazo === "inicia30" ? "Cursos que parten en el próximo mes"
+                 : plazo === "inicia60" ? "Cursos que parten en los próximos dos meses"
                  : plazo === "7" ? "Vence esta semana"
                  : "Próximos " + plazo + " días";
 
     cont.innerHTML = `<div class="card">
       <h2>${titulo}</h2>
-      <div class="desc">${filas.length ? filas.length + " asignatura(s), ordenadas por la fecha más próxima." : ""}${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
+      <div class="desc">${filas.length ? filas.length + " asignatura(s), ordenadas por " + (porInicio ? "fecha de inicio de clases" : "la fecha más próxima") + "." : ""}${ultimo ? " · último avance registrado el " + bonita(aFecha(ultimo)) + (dias > 3 ? ", hace " + dias + " días" : "") : ""}</div>
+      ${porInicio && filas.length ? `<div class="aviso">Una asignatura que parte pronto y todavía no está cerrada necesita atención: revisa la columna de la derecha contra el estado actual.</div>` : ""}
       ${filas.length ? `<div class="scroll"><table class="utabla">
-        <tr><th>Asignatura</th><th>Fase</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>Clases</th><th></th></tr>
+        <tr><th>Asignatura</th><th>Fase</th><th>Etapa actual</th><th>Quién responde</th><th>Hasta</th><th>${porInicio ? "Parten" : "Clases"}</th><th></th></tr>
         ${filas.map(x => filaAsignatura(x.a, x.e, true)).join("")}
       </table></div>` : `<div class="vacio">${plazo === "atraso" ? "Ninguna asignatura está con atraso." : "Nada vence en ese plazo."}</div>`}
       <div class="uleyenda">
