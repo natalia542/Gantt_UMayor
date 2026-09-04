@@ -428,6 +428,9 @@ let CONTRATO = aFechaSegura("2027-01-31");
 /* Relato cronológico por asignatura. Explica el porqué de los cambios,
    que es lo que ninguna tabla de desvíos alcanza a decir. */
 let BITACORA = {};
+/* Días hábiles que se esperan entre la reunión inicial y el inicio del
+   desarrollo, para que el docente alcance a enviar el material comprometido. */
+let ESPERA_MATERIAL = 5;
 function aFechaSegura(t){ const p = String(t).split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
 let vistaActual = "uni";
 let asigAbierta = null;   // id de la asignatura que se está mirando
@@ -917,6 +920,10 @@ async function cargarDatos(){
     try{
       const cfg = await traer("CONFIG");
       cfg.forEach(c => {
+        if((c.clave || "").toLowerCase() === "dias_espera_material"){
+          const v = parseInt(c.valor, 10);
+          if(!isNaN(v)) ESPERA_MATERIAL = v;
+        }
         if((c.clave || "").toLowerCase() === "fecha_termino_contrato"){
           const f = leerFecha(c.valor);
           if(f && f !== "__ERROR__") CONTRATO = aFecha(f);
@@ -1098,12 +1105,17 @@ async function cargarDatos(){
     .sort((x, y) => x.fecha_reunion_inicial.localeCompare(y.fecha_reunion_inicial));
   let libreDesde = null;
   cola.forEach(a => {
-    const tras = proximoValido(masDias(aFecha(a.fecha_reunion_inicial), 1), a, null);
+    const reu = aFecha(a.fecha_reunion_inicial);
+    // Primero la semana para que el docente envíe el material comprometido
+    const finEspera = ESPERA_MATERIAL > 0 ? avanzar(proximoValido(masDias(reu, 1), a, null), ESPERA_MATERIAL, a, null) : reu;
+    const tras = proximoValido(masDias(finEspera, 1), a, null);
     const desde = (libreDesde && libreDesde > tras) ? libreDesde : tras;
     a.desarrollo = {
+      esperaIni: proximoValido(masDias(reu, 1), a, null),
+      esperaFin: finEspera,
       ini: desde,
       fin: avanzar(desde, DIAS_DESARROLLO, a, null),
-      espera: diffDias(tras, desde)     // días que quedó en cola
+      espera: diffDias(tras, desde)     // días que quedó en cola por la asignatura anterior
     };
     a.desarrollo.envio = proximoValido(masDias(a.desarrollo.fin, 1), a, null);
     libreDesde = proximoValido(masDias(a.desarrollo.fin, 1), a, null);
@@ -1490,6 +1502,7 @@ function pintarDetalle(){
     </div>
     ${a.comentario ? `<div class="aviso" style="margin-top:12px">${esc(a.comentario)}</div>` : ""}
     ${p.limitadoPorContrato ? `<div class="aviso alerta">El techo de esta asignatura es el <b>término de contrato del ${bonita(CONTRATO)}</b>, no su inicio de clases. Todas las fechas se calculan desde ahí.</div>` : ""}
+    ${a.desarrollo ? `<div class="aviso">Reunión inicial el <b>${bonita(aFecha(a.fecha_reunion_inicial))}</b>. Hasta el ${bonita(a.desarrollo.esperaFin)} el docente puede enviarnos el material comprometido; el desarrollo del contenido corre del <b>${bonita(a.desarrollo.ini)}</b> al <b>${bonita(a.desarrollo.fin)}</b>${a.desarrollo.espera > 0 && MODO_EQUIPO ? `, con ${a.desarrollo.espera} días de espera porque el equipo venía con otra asignatura` : ""}.</div>` : ""}
     ${MODO_EQUIPO ? tarjetaRuta(a, ruta) : ""}
     ${rutaFases(a)}
     ${bloqueBitacora(a, !MODO_EQUIPO)}
@@ -1739,6 +1752,7 @@ function planFaseSimple(asig, hitos, clave, fechaGatillo){
       else if(clave === "1" && h.orden === 2 && asig.desarrollo){
         h._ini = asig.desarrollo.ini; h._fin = asig.desarrollo.fin;
       }
+      else if(clave === "1" && h.orden === 1.5){ h.activo = false; }
       else if(clave === "2" && h.orden === 1 && asig.fecha_envio_guiones){
         // la elaboración de guiones ocupa los días previos al envío
         h._fin = previoValido(masDias(aFecha(asig.fecha_envio_guiones), -1), asig, h);
