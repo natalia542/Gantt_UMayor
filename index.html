@@ -1431,7 +1431,14 @@ function pintarDetalle(){
     const ry = ky === actualF ? 0 : (ky < actualF ? 1 : 2);
     return rx !== ry ? rx - ry : kx.localeCompare(ky);
   });
-  const gantts = ordenadas.map(clave => {
+  const faltaFase = !a.listaFases.some(c => claveFase(c) === actualF);
+  const avisoFalta = faltaFase
+    ? `<div class="card"><h2>${esc(NOMBRE_FASE[actualF] || "Fase " + actualF)}</h2>
+        <div class="aviso alerta">Esta asignatura está en la fase ${esc(actualF)}, pero en la pestaña HITOS no hay filas de esa fase para ella.
+        Revisa que estén cargadas y que no haya un filtro activo en la planilla: la herramienta lee solo las filas visibles.</div></div>`
+    : "";
+
+  const gantts = avisoFalta + ordenadas.map(clave => {
     const k = claveFase(clave);
     if(k > actualF){
       return `<div class="card"><h2>${esc(nombreFase(clave))}</h2>
