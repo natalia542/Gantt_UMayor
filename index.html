@@ -969,6 +969,7 @@ async function cargarDatos(){
       bloqueos: leerBloqueos(f.bloqueos_docente),
       etapa_alcanzada: (f.etapa_alcanzada || "").trim(),
       etapa_texto: (f.etapa || "").trim(),
+      fecha_reunion_inicial: (function(){ const x = leerFecha(f.reunion_inicial); return (x && x !== "__ERROR__") ? x : null; })(),
       inicio_original: (function(){ const x = leerFecha(f.inicio_original); return (x && x !== "__ERROR__") ? x : null; })(),
       motivo_cambio: f.motivo_cambio || "",
       modo_calendario: "habiles", dias_revision_plataforma: 5, dias_ajustes_qa: 5, dias_qa: 10,
@@ -1085,6 +1086,29 @@ async function cargarDatos(){
     a.faseDeclarada = m.fase;
     a.avanceHasta = m.hasta;
     a.etapaTexto = m.texto;
+  });
+
+  /* Cola de desarrollo de contenido.
+     El desarrollo dura 3 días hábiles y lo hace una sola persona, así que las
+     asignaturas no se solapan: cada una empieza el día hábil siguiente a su
+     reunión inicial, o cuando se libera la anterior, lo que ocurra después. */
+  const DIAS_DESARROLLO = 3;
+  const cola = asignaturas
+    .filter(a => a.fecha_reunion_inicial)
+    .sort((x, y) => x.fecha_reunion_inicial.localeCompare(y.fecha_reunion_inicial));
+  let libreDesde = null;
+  cola.forEach(a => {
+    const tras = proximoValido(masDias(aFecha(a.fecha_reunion_inicial), 1), a, null);
+    const desde = (libreDesde && libreDesde > tras) ? libreDesde : tras;
+    a.desarrollo = {
+      ini: desde,
+      fin: avanzar(desde, DIAS_DESARROLLO, a, null),
+      espera: diffDias(tras, desde)     // días que quedó en cola
+    };
+    a.desarrollo.envio = proximoValido(masDias(a.desarrollo.fin, 1), a, null);
+    libreDesde = proximoValido(masDias(a.desarrollo.fin, 1), a, null);
+    // Si no hay fecha de envío escrita, la propone la cola
+    if(!a.fecha_envio_contenido) a.fecha_envio_contenido = aTexto(a.desarrollo.envio);
   });
 
   estado.asignaturas = asignaturas;
@@ -1699,7 +1723,21 @@ function planFaseSimple(asig, hitos, clave, fechaGatillo){
       if(h.fecha_real_inicio || h.fecha_real_fin){
         h._ini = aFecha(h.fecha_real_inicio || h.fecha_real_fin);
         h._fin = aFecha(h.fecha_real_fin || h.fecha_real_inicio);
-      }else{ h.activo = false; }
+      }
+      /* En la fase 1, la reunión inicial y el desarrollo sí tienen fecha:
+         salen de la cola de desarrollo, no de un plazo comprometido. */
+      else if(clave === "1" && h.orden === 1 && asig.fecha_reunion_inicial){
+        h._ini = aFecha(asig.fecha_reunion_inicial); h._fin = h._ini;
+      }
+      else if(clave === "1" && h.orden === 2 && asig.desarrollo){
+        h._ini = asig.desarrollo.ini; h._fin = asig.desarrollo.fin;
+      }
+      else if(clave === "2" && h.orden === 1 && asig.fecha_envio_guiones){
+        // la elaboración de guiones ocupa los días previos al envío
+        h._fin = previoValido(masDias(aFecha(asig.fecha_envio_guiones), -1), asig, h);
+        h._ini = retroceder(h._fin, 3, asig, h);
+      }
+      else { h.activo = false; }
     }
   });
   if(!fechaGatillo) return {hitos:lista, gatillo:null, fin:null, vacio:true};
